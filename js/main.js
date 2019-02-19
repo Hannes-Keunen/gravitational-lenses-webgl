@@ -1,14 +1,16 @@
-function min(val1, val2) {
-    return val1 < val2 ? val1 : val2;
-}
-
 var sim = null;
 
 window.onload = function() {
-    sim = new Simulation("canvas", min(window.innerHeight, window.innerWidth));
+    // TODO: configurable simulation size
+    sim = new Simulation("canvas", Math.min(window.innerHeight, window.innerWidth));
+    (function render() {
+        sim.update();
+        window.requestAnimationFrame(render);
+    })();
 }
 
 window.onresize = function() {
     if (sim != null)
-        sim.setSize(min(window.innerHeight, window.innerWidth));
+        // TODO: configurable simulation size
+        sim.setSize(Math.min(window.innerHeight, window.innerWidth));
 }
