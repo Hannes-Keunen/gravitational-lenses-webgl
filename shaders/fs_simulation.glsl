@@ -9,7 +9,8 @@ struct source_plane {
     float radius;
 };
 
-uniform source_plane u_source;
+uniform source_plane u_source_planes[32];
+uniform float u_num_source_planes;
 uniform float u_size;           //< Canvas size, in pixels
 uniform float u_angularsize;    //< Angular size of the simulation, in arcseconds
 
@@ -28,9 +29,23 @@ vec2 angleToAbsolutePosition(vec2 angle) {
     return angle / u_angularsize * u_size;
 }
 
-bool traceBeta(vec2 beta) {
-    vec2 pos = angleToAbsolutePosition(beta);
-    return length(pos - u_source.origin) < u_source.radius;
+/** 
+ * Tries to intersect an angle beta with all source planes and returns the index of the closest intersecting source
+ * plane, or -1 if no intersection is found.
+ */
+int traceBeta(vec2 beta) {
+    int closest_index = -1;
+    float closest_Ds = -1.0;
+    for (int i = 0; i < int(u_num_source_planes); i++) {
+        if (length(angleToAbsolutePosition(beta) - u_source_planes[i].origin) < u_source_planes[i].radius) {
+            // intersection found, check if it is the closest
+            if (closest_Ds < 0.0 || closest_Ds > u_source_planes[i].D_s) {
+                closest_index = i;
+                closest_Ds = u_source_planes[i].D_s;
+            }
+        }
+    }
+    return closest_index;
 }
 
 void main() {
@@ -38,7 +53,8 @@ void main() {
 
     // TODO: calculate beta
 
-    if (traceBeta(theta))
+    int index = traceBeta(theta);
+    if (index >= 0)
         o_fragmentColor = vec4(1.0, 1.0, 1.0, 1.0);
     else
         o_fragmentColor = vec4(0.0, 0.0, 0.0, 1.0);

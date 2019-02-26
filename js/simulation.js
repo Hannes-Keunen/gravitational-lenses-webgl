@@ -176,7 +176,7 @@ function GLHelper(gl) {
      */
     this.runProgram = function(program, textures, uniforms, framebuffer) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-        
+
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -204,7 +204,7 @@ function GLHelper(gl) {
         switch (uniform.type) {
             case Uniform.FLOAT: gl.uniform1f(loc, uniform.value); break;
             case Uniform.VEC2: gl.uniform2f(loc, uniform.value[0], uniform.value[1]); break;
-            default: throw "Invalid uniform type: " + uniform.type;
+            default: throw "Invalid uniform type: " + uniform.type + "(value: " + uniform.value + ")";
         }
     }
 
@@ -226,15 +226,23 @@ function GLHelper(gl) {
 }
 
 /** A circular source plane. */
-function SourcePlane(redshift, x, y, radius) {
+function SourcePlane(redshift, lensRedshift, x, y, radius) {
     this.redshift = redshift;   /** The redshift value */
-    this.angulardistance;       /** Viewing distance, in Mpc */
+    this.D_s;                   /** Viewing distance, in Mpc */
+    this.D_ds;                  /** Distance to the lens, in Mpc */
     this.x = x;                 /** X coordinate */
     this.y = y;                 /** Y coordinate */
-    this.r = radius             /** Radius */
+    this.radius = radius        /** Radius */
 
     this.constructor = function() {
-        this.distance = calculateAngularDiameterDistance(0.0, redshift);
+        this.D_s = calculateAngularDiameterDistance(0.0, redshift);
+        this.D_ds = calculateAngularDiameterDistance(lensRedshift, redshift);
+    }
+
+    this.setRedshiftValue = function(redshift, lensRedshift) {
+        this.redshift = redshift;
+        this.D_s = calculateAngularDiameterDistance(0.0, redshift);
+        this.D_ds = calculateAngularDiameterDistance(lensRedshift, redshift);
     }
 
     this.constructor();
@@ -245,9 +253,21 @@ function GravitationalLens(redshift, model, params) {
     this.redshift = redshift;   /** The redshift value */
     this.angulardistance;       /** The angular diameter distance, in Mpc */
     this.model = model;         /** Lens model for alpha calculation */
+    this.params = params;       /** Model-specific parameters */
 
     this.constructor = function() {
-        this.angulardistance = calculateAngularDiameterDistance(redshift, 0.0);
+        this.angulardistance = calculateAngularDiameterDistance(this.redshift, 0.0);
+    }
+
+    this.setRedshiftValue = function(redshift) {
+        this.redshift = redshift;
+        this.angulardistance = calculateAngularDiameterDistance(this.redshift, 0.0);
+    }
+
+    this.setModel = function(model, params) {
+        this.model = model;
+        this.params = params;
+        // TODO: check if the required parameters are supplied
     }
 
     this.constructor();
@@ -290,22 +310,59 @@ function Simulation(canvasID, size) {
 
         this.uniforms["u_size"] = new Uniform(Uniform.FLOAT, this.size);
         this.uniforms["u_angularsize"] = new Uniform(Uniform.FLOAT, 120);
-        this.uniforms["u_source.origin"] = new Uniform(Uniform.VEC2, [0.0, 0.0]);
-        this.uniforms["u_source.radius"] = new Uniform(Uniform.FLOAT, 128.0);
-        this.uniforms["u_source.D_s"] = new Uniform(Uniform.FLOAT, calculateAngularDiameterDistance(0.0, 2.0));
+        this.uniforms["u_num_source_planes"] = new Uniform(Uniform.FLOAT, 0);
+
+        this.lens = new GravitationalLens(1.0, GravitationalLens.PLUMMER);
     }
 
     this.setSize = function(size) {
+        this.size = size;
         this.canvas.width = size;
         this.canvas.height = size;
         this.gl.viewport(0, 0, size, size);
-        this.uniforms["u_size"].value = size;
+        // TODO: this doesn't work as expected
+    }
+
+    this.setLensRedshiftValue = function(value) {
+        this.lens.setRedshiftValue(value);
+        // update the distance to the lens for all source planes
+        for (let sourcePlane of this.sourcePlanes)
+            sourcePlane.setRedshiftValue(sourcePlane.redshift, this.lens.redshift);
+    }
+
+    this.setLensModel = function(model, params) {
+        this.lens.setModel(model, params);
+    }
+
+    this.addSourcePlane = function(sourcePlane) {
+        this.sourcePlanes.push(sourcePlane);
+    }
+
+    this.removeSourcePlane = function(sourcePlane) {
+        var index = this.sourcePlanes.indexOf(sourcePlane);
+        if (sourcePlane != this.sourcePlanes[index])
+            console.log("hihi");
+        this.sourcePlanes.splice(index, 1);
+        return index;
     }
 
     this.update = function() {
         if (this.displayShader && this.simulationShader) {
+            this.updateUniforms();
             this.helper.runProgram(this.simulationShader, [], this.uniforms, this.framebuffer);
             this.helper.runProgram(this.displayShader, [{texture: this.fbtexture, name: "u_texture"}], {}, null);
+        }
+    }
+
+    this.updateUniforms = function() {
+        this.uniforms["u_size"].value = this.size;
+        this.uniforms["u_num_source_planes"].value = this.sourcePlanes.length;
+        for (let i = 0; i < this.sourcePlanes.length; i++) {
+            let sourcePlane = this.sourcePlanes[i];
+            this.uniforms["u_source_planes["+i+"].origin"] = new Uniform(Uniform.VEC2, [sourcePlane.x, sourcePlane.y]);
+            this.uniforms["u_source_planes["+i+"].radius"] = new Uniform(Uniform.FLOAT, sourcePlane.radius);
+            this.uniforms["u_source_planes["+i+"].D_s"] = new Uniform(Uniform.FLOAT, sourcePlane.D_s);
+            this.uniforms["u_source_planes["+i+"].D_ds"] = new Uniform(Uniform.FLOAT, sourcePlane.D_ds);
         }
     }
 

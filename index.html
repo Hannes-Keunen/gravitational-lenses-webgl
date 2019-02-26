@@ -2,26 +2,45 @@
 <html>
     <head>
         <title>Gravitational Lenses</title>
-        <style>
-            body {
-                margin: 0;
-                background-color: #212121;
-            }
-            #canvas {
-                float:left;
-            }
-            #controls {
-                float:left;
-            }
-        </style>
+        <link rel="stylesheet" type="text/css" href="styles.css">
         <script src="bin/grale.js"></script>
         <script src="js/simulation.js"></script>
+        <script src="js/controls.js"></script>
         <script src="js/main.js"></script>
     </head>
     <body>
         <canvas id="canvas"></canvas>
         <div id="controls">
-            <button>Push me</button>
+            <div class="controls-section">
+                Simulation size:
+                <select id="size_picker">
+                    <option value="auto">auto</option>
+                    <option value="512">512x512</option>
+                    <option value="1024">1024x1024</option>
+                    <option value="2048">2048x2048</option>
+                    <option value="4096">4096x4096</option>
+                </select>
+            </div>
+            <div class="controls-section">
+                Lens plane:<br>
+                redshift (z): <span id="lens_redshift_value"></span>
+                <div class="slider-container">
+                    <input type="range" min="50" max="300" value="100" id="lens_redshift_slider">
+                </div>
+                model: 
+                <select id="lens_model_picker">
+                    <option value="1">Plummer</option>
+                    <option value="2">SIS</option>
+                    <option value="3">NSIS</option>
+                    <option value="4">SIE</option>
+                    <option value="5">NSIE</option>
+                    <option value="6">Mass sheet</option>
+                </select>
+            </div>
+            <div class="controls-section">
+                Source planes: <button id="add_source_plane">+</button>
+                <ol id="source_plane_list"></ol>
+            </div>
         </div>
     </body>
 </html>

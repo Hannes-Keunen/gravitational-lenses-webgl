@@ -1,0 +1,56 @@
+body {
+    margin: 0;
+    background-color: #212121;
+    color: white;
+}
+
+#canvas {
+    float:left;
+}
+
+#controls {
+    float:left;
+    margin: 16px;
+}
+
+#controls .controls-section {
+    padding: 8px;
+    margin: 16px 0px;
+    border-radius: 2px;
+    background-color: #424242;
+}
+
+#controls .controls-section:first-child {
+    margin-top: 0px;
+}
+
+.slider-container {
+    text-align: center;
+}
+
+.slider-container input[type=range] {
+    width: 100%;
+}
+
+#source_plane_list {
+    padding: 0px 20px;
+}
+
+#source_plane_list .source-plane-controls {
+    border-bottom: 1px solid white;
+    padding: 8px 0px;
+}
+
+#source_plane_list .source-plane-controls:first-child {
+    padding-top: 0px;
+}
+
+#source_plane_list .source-plane-controls:last-child {
+    border-bottom: none;
+    padding-bottom: 0px;
+}
+
+#source_plane_list button {
+    width: 100%;
+    margin: 8px 0px;
+}
