@@ -3,19 +3,21 @@
 precision highp float;
 
 struct source_plane {
-    float D_ds;                 //< Distance to the lens, in Mpc
-    float D_s;                  //< Distance to the viewer, in Mpc
+    float D_ds;                     //< Distance to the lens, in Mpc
+    float D_s;                      //< Distance to the viewer, in Mpc
     vec2 origin;
     float radius;
 };
 
+uniform sampler2D u_alphaTexture;   //< Texture containing alpha vectors
+
 uniform source_plane u_source_planes[32];
 uniform float u_num_source_planes;
-uniform float u_size;           //< Canvas size, in pixels
-uniform float u_angularsize;    //< Angular size of the simulation, in arcseconds
+uniform float u_size;               //< Canvas size, in pixels
+uniform float u_angularsize;        //< Angular size of the simulation, in arcseconds
 
 in vec2 v_pos;
-in vec2 v_real_pos;
+in vec2 v_texpos;
 
 out vec4 o_fragmentColor;
 
@@ -58,4 +60,5 @@ void main() {
         o_fragmentColor = vec4(1.0, 1.0, 1.0, 1.0);
     else
         o_fragmentColor = vec4(0.0, 0.0, 0.0, 1.0);
+    // o_fragmentColor = texture(u_alphaTexture, v_texpos);
 }

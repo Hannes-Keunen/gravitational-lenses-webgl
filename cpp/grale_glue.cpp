@@ -7,8 +7,6 @@
 
 #include <emscripten/emscripten.h>
 
-#include <iostream>
-
 extern "C" {
 
 grale::PlummerLens *EMSCRIPTEN_KEEPALIVE createPlummerLens(double D_d, double mass, double angularWidth) {
@@ -47,22 +45,22 @@ grale::NSIELens *EMSCRIPTEN_KEEPALIVE createNSIELens(double D_d, double velocity
 }
 
 grale::MassSheetLens *EMSCRIPTEN_KEEPALIVE createMassSheetLens(double D_d, double density) {
-    grale::MassSheetLens *lens = new grale::SIELens;
+    grale::MassSheetLens *lens = new grale::MassSheetLens;
     grale::MassSheetLensParams params(density);
     lens->init(D_d, &params);
     return lens;
 }
 
-void EMSCRIPTEN_KEEPALIVE calculateLensAlphaX(grale::GravitationalLens lens, double D_d, double D_ds, double theta_x, double theta_y) {
+float EMSCRIPTEN_KEEPALIVE calculateLensAlphaX(grale::GravitationalLens *lens, double theta_x, double theta_y) {
     grale::Vector2Dd alpha;
     lens->getAlphaVector(grale::Vector2Dd(theta_x, theta_y), &alpha);
-    return alpha.x;
+    return alpha.getX();
 }
 
-void EMSCRIPTEN_KEEPALIVE calculateLensAlphaY(grale::GravitationalLens lens, double D_d, double D_ds, double theta_x, double theta_y) {
+float EMSCRIPTEN_KEEPALIVE calculateLensAlphaY(grale::GravitationalLens *lens, double theta_x, double theta_y) {
     grale::Vector2Dd alpha;
     lens->getAlphaVector(grale::Vector2Dd(theta_x, theta_y), &alpha);
-    return alpha.y;
+    return alpha.getY();
 }
 
 void EMSCRIPTEN_KEEPALIVE destroyLens(grale::GravitationalLens *lens) {

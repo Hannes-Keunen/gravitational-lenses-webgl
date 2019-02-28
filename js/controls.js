@@ -65,6 +65,7 @@ function Controls(sim) {
     this.lensRedshiftSlider = document.getElementById("lens_redshift_slider");
     this.lensRedshiftDisplay = document.getElementById("lens_redshift_value");
     this.lensModelPicker = document.getElementById("lens_model_picker");
+    this.startSimulationButton = document.getElementById("start_simulation");
     this.sourcePlaneList = document.getElementById("source_plane_list");
     this.addSourcePlaneButton = document.getElementById("add_source_plane");
     this.sourcePlaneControls = [];
@@ -78,7 +79,9 @@ function Controls(sim) {
         this.lensRedshiftSlider.addEventListener("input", this.lensRedshiftCallback.bind(this));
         this.lensModelPicker.addEventListener("change", this.lensModelCallback.bind(this));
         this.addSourcePlaneButton.addEventListener("click", this.addSourcePlane.bind(this));
+        this.startSimulationButton.addEventListener("click", this.startSimulationCallback.bind(this));
         window.onresize = this.resizeCallback.bind(this);
+        Module.onRuntimeInitialized = this.emscriptenCallback.bind(this);
     }
 
     this.initDefaults = function() {
@@ -146,6 +149,14 @@ function Controls(sim) {
     this.sourcePlaneRemoveCallback = function(index) {
         this.sourcePlaneList.removeChild(this.sourcePlaneList.childNodes[index]);
         this.sourcePlaneControls.splice(index, 1);
+    }
+
+    this.emscriptenCallback = function() {
+        this.startSimulationButton.disabled = false;
+    }
+
+    this.startSimulationCallback = function() {
+        sim.start();
     }
 
     this.setCallbacks();

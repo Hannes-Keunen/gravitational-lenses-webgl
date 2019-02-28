@@ -1,3 +1,13 @@
+/** Constants */
+const MASS_SUN      = 1.98855e30;
+const DIST_PC       = 3.0856775714409184e16;
+const DIST_KPC      = 1000.0 * DIST_PC;
+const DIST_MPC      = 1000.0 * DIST_KPC;
+const SPEED_C       = 299792458.0;
+const ANGLE_DEGREE  = Math.PI / 180.0;
+const ANGLE_ARCMIN  = ANGLE_DEGREE / 60;
+const ANGLE_ARCSEC  = ANGLE_ARCMIN / 60;
+
 /** Calculates the angular distance in Mpc between two object, based on their redshifts. */
 function calculateAngularDiameterDistance(z1, z2) {
     var h   = 0.7;          /* Hubble constant */
@@ -97,6 +107,7 @@ Uniform.VEC2 = 2;
 
 /** Contains helper methods for common WebGL operations. */
 function GLHelper(gl) {
+    this.gl = gl;
     this.vertexbuffer;          /* WebGLBuffer */
     this.uniformLocations = {}; /* [WebGLProgram => [String => WebGLUniformLocation]] */
 
@@ -182,13 +193,17 @@ function GLHelper(gl) {
 
         gl.useProgram(program);
 
-        for (let i = 0; i < textures.length; i++) {
+        // Bind textures
+        var i = 0;
+        Object.keys(textures).forEach(function(key) {
             gl.activeTexture(gl.TEXTURE0 + i);
-            gl.bindTexture(gl.TEXTURE_2D, textures[i].texture);
-            var loc = this.getUniformLocation(program, textures[i].name);
+            gl.bindTexture(gl.TEXTURE_2D, textures[key]);
+            var loc = this.getUniformLocation(program, key);
             gl.uniform1i(loc, i);
-        }
+            i++;
+        }.bind(this));
 
+        // Bind uniforms
         Object.keys(uniforms).forEach(function(key) {
             this.applyUniform(program, key, uniforms[key]);
         }.bind(this));
@@ -251,17 +266,18 @@ function SourcePlane(redshift, lensRedshift, x, y, radius) {
 /** Gravitational lenses */
 function GravitationalLens(redshift, model, params) {
     this.redshift = redshift;   /** The redshift value */
-    this.angulardistance;       /** The angular diameter distance, in Mpc */
+    this.D_d;                   /** The angular diameter distance, in Mpc */
     this.model = model;         /** Lens model for alpha calculation */
     this.params = params;       /** Model-specific parameters */
+    this.alphaTexture = null;   /** WebGL texture where alpha vectors are stored */
 
     this.constructor = function() {
-        this.angulardistance = calculateAngularDiameterDistance(this.redshift, 0.0);
+        this.D_d = calculateAngularDiameterDistance(this.redshift, 0.0);
     }
 
     this.setRedshiftValue = function(redshift) {
         this.redshift = redshift;
-        this.angulardistance = calculateAngularDiameterDistance(this.redshift, 0.0);
+        this.D_d = calculateAngularDiameterDistance(this.redshift, 0.0);
     }
 
     this.setModel = function(model, params) {
@@ -269,6 +285,58 @@ function GravitationalLens(redshift, model, params) {
         this.params = params;
         // TODO: check if the required parameters are supplied
     }
+
+    this.calculateAlphaVectors = function(simulationSize, angularSize, glhelper) {
+        console.log(this.D_d*DIST_MPC);
+        console.log(this.params.mass*MASS_SUN);
+        console.log(this.params.angularWidth*ANGLE_ARCSEC);
+        switch (this.model) {
+            case GravitationalLens.PLUMMER: var lens = createPlummerLens(this.D_d*DIST_MPC, this.params.mass*MASS_SUN, this.params.angularWidth*ANGLE_ARCSEC); break;
+            case GravitationalLens.SIS: var lens = createSISLens(this.D_d*DIST_MPC, this.params.velocityDispersion); break;
+            case GravitationalLens.NSIS: var lens = createNSISLens(this.D_d*DIST_MPC, this.params.velocityDispersion, this.params.angularCoreRadius); break;
+            case GravitationalLens.SIE: var lens = createSIELens(this.D_d*DIST_MPC, this.params.velocityDispersion, this.params.ellipticity); break;
+            case GravitationalLens.NSIE: var lens = createNSIELens(this.D_d*DIST_MPC, this.params.velocityDispersion, this.params.ellipticity, this.params.angularCoreRadius); break;
+            case GravitationalLens.MASS_SHEET: var lens = createMassSheetLens(this.D_d*DIST_MPC, this.params.density); break;
+        }
+
+        var alphas = new Float32Array(simulationSize * simulationSize * 2);
+        // var min_x, min_y, max_x, max_y;
+        for (let y = 0; y < simulationSize; y++) {
+            for (let x = 0; x < simulationSize; x++) {
+                var theta_x = (x - simulationSize / 2) / simulationSize * angularSize;
+                var theta_y = (y - simulationSize / 2) / simulationSize * angularSize;
+                // calculate alpha vectors and make sure thay are in [-1.0, 1.0]s
+                var alpha_x = calculateLensAlphaX(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCMIN + 0.5;
+                var alpha_y = calculateLensAlphaY(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCMIN + 0.5;
+                alphas[  (x + simulationSize * y) * 2  ] = alpha_x;
+                alphas[(x + simulationSize * y) * 2 + 1] = alpha_y;
+                // if (min_x === undefined || isNaN(min_x)) min_x = alpha_x;
+                // if (min_y === undefined || isNaN(min_y)) min_y = alpha_y;
+                // if (max_x === undefined || isNaN(max_x)) max_x = alpha_x;
+                // if (max_y === undefined || isNaN(max_y)) max_y = alpha_y;
+                // if (alpha_x < min_x) min_x = alpha_x;
+                // if (alpha_x > max_x) max_x = alpha_x;
+                // if (alpha_y < min_y) min_y = alpha_y;
+                // if (alpha_y > max_y) max_y = alpha_y;
+            }
+        }
+
+        // console.log("min: ("+min_x+","+min_y+"); max: ("+max_x+","+max_y+")");
+        if (this.alphaTexture != null)
+            glhelper.gl.deleteTexture(alphaTexture);
+        this.alphaTexture = glhelper.createTexture(simulationSize, simulationSize, glhelper.gl.RG32F, glhelper.gl.RG, glhelper.gl.FLOAT, alphas);
+        destroyLens(lens);
+    }
+
+    var createPlummerLens = Module.cwrap("createPlummerLens", "number", ["number", "number", "number"]);
+    var createSISLens = Module.cwrap("createSISLens", "number", ["number", "number"]);
+    var createNSISLens = Module.cwrap("createNSISLens", "number", ["number", "number", "number"]);
+    var createSIELens = Module.cwrap("createSIELens", "number", ["number", "number", "number"]);
+    var createNSIELens = Module.cwrap("createNSIELens", "number", ["number", "number", "number", "number"]);
+    var createMassSheetLens = Module.cwrap("createMassSheetLens", "number", ["number", "number"]);
+    var calculateLensAlphaX = Module.cwrap("calculateLensAlphaX", "number", ["number", "number", "number", "number", "number"]);
+    var calculateLensAlphaY = Module.cwrap("calculateLensAlphaY", "number", ["number", "number", "number", "number", "number"]);
+    var destroyLens = Module.cwrap("destroyLens", null, ["number"]);
 
     this.constructor();
 }
@@ -281,19 +349,21 @@ GravitationalLens.SIE = 4;
 GravitationalLens.NSIE = 5;
 GravitationalLens.MASS_SHEET = 6;
 
-function Simulation(canvasID, size) {
-    this.size = size;       /* Number */
-    this.canvas;            /* HtmlCanvasObject */
-    this.gl;                /* WebGL2RenderingContext */
-    this.helper;            /* GLHelper */
-    this.simulationShader;  /* WebGLProgram */
-    this.displayShader;     /* WebGLProgram */
-    this.fbtexture;         /* WebGLTexture */
-    this.framebuffer;       /* WebGLFramebuffer */
+function Simulation(canvasID, size, angularSize) {
+    this.size = size;               /** Simulation size in pixels */
+    this.angularSize = angularSize; /** Simulation size in arcseconds */
+    this.canvas;                    /** HtmlCanvasObject */
+    this.gl;                        /** WebGL2RenderingContext */
+    this.helper;                    /** GLHelper */
+    this.simulationShader;          /** WebGLProgram */
+    this.displayShader;             /** WebGLProgram */
+    this.fbtexture;                 /** WebGLTexture */
+    this.framebuffer;               /** WebGLFramebuffer */
     this.uniforms = {};
+    this.started = false;
 
-    this.lens;              /* GravitationalLens */
-    this.sourcePlanes = []; /* SourcePlane[] */
+    this.lens;                      /** GravitationalLens */
+    this.sourcePlanes = [];         /** SourcePlane[] */
 
     this.constructor = function() {
         this.canvas = document.getElementById(canvasID);
@@ -309,10 +379,10 @@ function Simulation(canvasID, size) {
         this.framebuffer = this.helper.createFramebuffer(this.fbtexture);
 
         this.uniforms["u_size"] = new Uniform(Uniform.FLOAT, this.size);
-        this.uniforms["u_angularsize"] = new Uniform(Uniform.FLOAT, 120);
+        this.uniforms["u_angularsize"] = new Uniform(Uniform.FLOAT, this.angularSize);
         this.uniforms["u_num_source_planes"] = new Uniform(Uniform.FLOAT, 0);
 
-        this.lens = new GravitationalLens(1.0, GravitationalLens.PLUMMER);
+        this.lens = new GravitationalLens(0.5, GravitationalLens.PLUMMER, {mass: 1e14, angularWidth: 60});
     }
 
     this.setSize = function(size) {
@@ -334,6 +404,11 @@ function Simulation(canvasID, size) {
         this.lens.setModel(model, params);
     }
 
+    this.start = function() {
+        this.lens.calculateAlphaVectors(this.size, this.angularSize, this.helper);
+        this.started = true;
+    }
+
     this.addSourcePlane = function(sourcePlane) {
         this.sourcePlanes.push(sourcePlane);
     }
@@ -346,12 +421,14 @@ function Simulation(canvasID, size) {
         return index;
     }
 
+    this.isReady = function() {
+        return this.started && this.displayShader && this.simulationShader;
+    }
+
     this.update = function() {
-        if (this.displayShader && this.simulationShader) {
-            this.updateUniforms();
-            this.helper.runProgram(this.simulationShader, [], this.uniforms, this.framebuffer);
-            this.helper.runProgram(this.displayShader, [{texture: this.fbtexture, name: "u_texture"}], {}, null);
-        }
+        this.updateUniforms();
+        this.helper.runProgram(this.simulationShader, {u_alphaTexture: this.lens.alphaTexture}, this.uniforms, this.framebuffer);
+        this.helper.runProgram(this.displayShader, {u_texture: this.fbtexture}, {}, null);
     }
 
     this.updateUniforms = function() {
