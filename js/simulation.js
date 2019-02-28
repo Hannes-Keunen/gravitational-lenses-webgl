@@ -375,7 +375,7 @@ function Simulation(canvasID, size, angularSize) {
         this.fbtexture = this.helper.createTexture(size, size);
         this.framebuffer = this.helper.createFramebuffer(this.fbtexture);
 
-        this.lens = new GravitationalLens(1.0, 100.0, GravitationalLens.PLUMMER, {mass: 1e14, angularWidth: 60});
+        this.lens = new GravitationalLens(1.0, 10.0, GravitationalLens.PLUMMER, {mass: 1e14, angularWidth: 60});
 
         this.uniforms["u_size"] = new Uniform(Uniform.FLOAT, this.size);
         this.uniforms["u_angularSize"] = new Uniform(Uniform.FLOAT, this.angularSize);
@@ -432,6 +432,7 @@ function Simulation(canvasID, size, angularSize) {
         this.uniforms["u_size"].value = this.size;
         this.uniforms["u_num_source_planes"].value = this.sourcePlanes.length;
         this.uniforms["u_D_d"].value = this.lens.D_d;
+        this.uniforms["u_lensStrength"].value = this.lens.strength;
         for (let i = 0; i < this.sourcePlanes.length; i++) {
             let sourcePlane = this.sourcePlanes[i];
             this.uniforms["u_source_planes["+i+"].origin"] = new Uniform(Uniform.VEC2, [sourcePlane.x, sourcePlane.y]);

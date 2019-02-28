@@ -63,6 +63,8 @@ function Controls(sim) {
     this.sizePicker = document.getElementById("size_picker")
     this.sourcePlaneList = document.getElementById("source_plane_list");
     this.lensRedshiftSlider = document.getElementById("lens_redshift_slider");
+    this.lensStrengthDisplay = document.getElementById("lens_strength_value");
+    this.lensStrengthSlider = document.getElementById("lens_strength_slider");
     this.lensRedshiftDisplay = document.getElementById("lens_redshift_value");
     this.lensModelPicker = document.getElementById("lens_model_picker");
     this.startSimulationButton = document.getElementById("start_simulation");
@@ -77,6 +79,7 @@ function Controls(sim) {
     this.setCallbacks = function() {
         this.sizePicker.addEventListener("change", this.simulationSizeCallback.bind(this));
         this.lensRedshiftSlider.addEventListener("input", this.lensRedshiftCallback.bind(this));
+        this.lensStrengthSlider.addEventListener("input", this.lensStrengthCallback.bind(this));
         this.lensModelPicker.addEventListener("change", this.lensModelCallback.bind(this));
         this.addSourcePlaneButton.addEventListener("click", this.addSourcePlane.bind(this));
         this.startSimulationButton.addEventListener("click", this.startSimulationCallback.bind(this));
@@ -87,6 +90,7 @@ function Controls(sim) {
     this.initDefaults = function() {
         this.lensRedshift = this.lensRedshiftSlider.value / 100;
         this.lensRedshiftDisplay.innerHTML = this.lensRedshiftSlider.value / 100;
+        this.lensStrengthDisplay.innerHTML = this.lensStrengthSlider.value;
         this.simulationSize = this.sizePicker.value;
     }
 
@@ -107,6 +111,11 @@ function Controls(sim) {
         this.lensRedshift = this.lensRedshiftSlider.value / 100;
         this.simulation.setLensRedshiftValue(this.lensRedshift);
         this.lensRedshiftDisplay.innerHTML = this.lensRedshift;
+    }
+
+    this.lensStrengthCallback = function() {
+        this.simulation.lens.strength = this.lensStrengthSlider.value;
+        this.lensStrengthDisplay.innerHTML = this.lensStrengthSlider.value;
     }
 
     this.lensModelCallback = function() {
