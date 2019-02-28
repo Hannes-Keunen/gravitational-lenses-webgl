@@ -264,8 +264,9 @@ function SourcePlane(redshift, lensRedshift, x, y, radius) {
 }
 
 /** Gravitational lenses */
-function GravitationalLens(redshift, model, params) {
+function GravitationalLens(redshift, strength, model, params) {
     this.redshift = redshift;   /** The redshift value */
+    this.strength = strength;   /** Strength factor */
     this.D_d;                   /** The angular diameter distance, in Mpc */
     this.model = model;         /** Lens model for alpha calculation */
     this.params = params;       /** Model-specific parameters */
@@ -287,9 +288,6 @@ function GravitationalLens(redshift, model, params) {
     }
 
     this.calculateAlphaVectors = function(simulationSize, angularSize, glhelper) {
-        console.log(this.D_d*DIST_MPC);
-        console.log(this.params.mass*MASS_SUN);
-        console.log(this.params.angularWidth*ANGLE_ARCSEC);
         switch (this.model) {
             case GravitationalLens.PLUMMER: var lens = createPlummerLens(this.D_d*DIST_MPC, this.params.mass*MASS_SUN, this.params.angularWidth*ANGLE_ARCSEC); break;
             case GravitationalLens.SIS: var lens = createSISLens(this.D_d*DIST_MPC, this.params.velocityDispersion); break;
@@ -305,9 +303,8 @@ function GravitationalLens(redshift, model, params) {
             for (let x = 0; x < simulationSize; x++) {
                 var theta_x = (x - simulationSize / 2) / simulationSize * angularSize;
                 var theta_y = (y - simulationSize / 2) / simulationSize * angularSize;
-                // calculate alpha vectors and make sure thay are in [-1.0, 1.0]s
-                var alpha_x = calculateLensAlphaX(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCMIN + 0.5;
-                var alpha_y = calculateLensAlphaY(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCMIN + 0.5;
+                var alpha_x = calculateLensAlphaX(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCSEC; // + 0.5;
+                var alpha_y = calculateLensAlphaY(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCSEC; // + 0.5;
                 alphas[  (x + simulationSize * y) * 2  ] = alpha_x;
                 alphas[(x + simulationSize * y) * 2 + 1] = alpha_y;
                 // if (min_x === undefined || isNaN(min_x)) min_x = alpha_x;
@@ -323,7 +320,7 @@ function GravitationalLens(redshift, model, params) {
 
         // console.log("min: ("+min_x+","+min_y+"); max: ("+max_x+","+max_y+")");
         if (this.alphaTexture != null)
-            glhelper.gl.deleteTexture(alphaTexture);
+            glhelper.gl.deleteTexture(this.alphaTexture);
         this.alphaTexture = glhelper.createTexture(simulationSize, simulationSize, glhelper.gl.RG32F, glhelper.gl.RG, glhelper.gl.FLOAT, alphas);
         destroyLens(lens);
     }
@@ -378,11 +375,13 @@ function Simulation(canvasID, size, angularSize) {
         this.fbtexture = this.helper.createTexture(size, size);
         this.framebuffer = this.helper.createFramebuffer(this.fbtexture);
 
-        this.uniforms["u_size"] = new Uniform(Uniform.FLOAT, this.size);
-        this.uniforms["u_angularsize"] = new Uniform(Uniform.FLOAT, this.angularSize);
-        this.uniforms["u_num_source_planes"] = new Uniform(Uniform.FLOAT, 0);
+        this.lens = new GravitationalLens(1.0, 100.0, GravitationalLens.PLUMMER, {mass: 1e14, angularWidth: 60});
 
-        this.lens = new GravitationalLens(0.5, GravitationalLens.PLUMMER, {mass: 1e14, angularWidth: 60});
+        this.uniforms["u_size"] = new Uniform(Uniform.FLOAT, this.size);
+        this.uniforms["u_angularSize"] = new Uniform(Uniform.FLOAT, this.angularSize);
+        this.uniforms["u_num_source_planes"] = new Uniform(Uniform.FLOAT, 0);
+        this.uniforms["u_D_d"] = new Uniform(Uniform.FLOAT, this.lens.D_d);
+        this.uniforms["u_lensStrength"] = new Uniform(Uniform.FLOAT, this.lens.strength);
     }
 
     this.setSize = function(size) {
@@ -415,8 +414,6 @@ function Simulation(canvasID, size, angularSize) {
 
     this.removeSourcePlane = function(sourcePlane) {
         var index = this.sourcePlanes.indexOf(sourcePlane);
-        if (sourcePlane != this.sourcePlanes[index])
-            console.log("hihi");
         this.sourcePlanes.splice(index, 1);
         return index;
     }
@@ -434,6 +431,7 @@ function Simulation(canvasID, size, angularSize) {
     this.updateUniforms = function() {
         this.uniforms["u_size"].value = this.size;
         this.uniforms["u_num_source_planes"].value = this.sourcePlanes.length;
+        this.uniforms["u_D_d"].value = this.lens.D_d;
         for (let i = 0; i < this.sourcePlanes.length; i++) {
             let sourcePlane = this.sourcePlanes[i];
             this.uniforms["u_source_planes["+i+"].origin"] = new Uniform(Uniform.VEC2, [sourcePlane.x, sourcePlane.y]);
