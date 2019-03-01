@@ -132,7 +132,7 @@ function GLHelper(gl) {
         if (!compiled) {
             var error = gl.getShaderInfoLog(shader);
             gl.deleteShader(shader);
-            throw "Error compiling shader: " + error;
+            throw new Error("Error compiling shader: " + error);
         }
 
         return shader;
@@ -150,7 +150,7 @@ function GLHelper(gl) {
         if (!linked) {
             var error = gl.getProgramInfoLog(program);
             gl.deleteProgram(program);
-            throw "Error linking program: " + error;
+            throw new Error("Error linking program: " + error);
         }
         return program;
     }
@@ -176,7 +176,7 @@ function GLHelper(gl) {
 
         var status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
         if (status != gl.FRAMEBUFFER_COMPLETE)
-            throw "Framebuffer is not complete, return value is " + status;
+            throw new Error("Framebuffer is not complete, return value is " + status);
         
         return fb;
     }
@@ -219,7 +219,7 @@ function GLHelper(gl) {
         switch (uniform.type) {
             case Uniform.FLOAT: gl.uniform1f(loc, uniform.value); break;
             case Uniform.VEC2: gl.uniform2f(loc, uniform.value[0], uniform.value[1]); break;
-            default: throw "Invalid uniform type: " + uniform.type + "(value: " + uniform.value + ")";
+            default: throw new Error("Invalid uniform type: " + uniform.type + "(value: " + uniform.value + ")");
         }
     }
 
@@ -282,9 +282,10 @@ function GravitationalLens(redshift, strength, model, params) {
     }
 
     this.setModel = function(model, params) {
+        if (!this.checkParams(params))
+            throw new Error("invalid parameters for lens model " + this.model);
         this.model = model;
         this.params = params;
-        // TODO: check if the required parameters are supplied
     }
 
     this.calculateAlphaVectors = function(simulationSize, angularSize, glhelper) {
@@ -323,6 +324,17 @@ function GravitationalLens(redshift, strength, model, params) {
             glhelper.gl.deleteTexture(this.alphaTexture);
         this.alphaTexture = glhelper.createTexture(simulationSize, simulationSize, glhelper.gl.RG32F, glhelper.gl.RG, glhelper.gl.FLOAT, alphas);
         destroyLens(lens);
+    }
+
+    this.checkParams = function(params) {
+        switch (this.model) {
+            case GravitationalLens.PLUMMER: return "mass" in params && "angularWidth" in params;
+            case GravitationalLens.SIS: return "velocityDispersion" in params;
+            case GravitationalLens.NSIS: return "velocityDispersion" in params && "angularCoreRadius" in params;
+            case GravitationalLens.SIE: return "velocityDispersion" in params && "ellipticity" in params;
+            case GravitationalLens.NSIE: return "velocityDispersion" in params && "ellipticity" in params && "angularCoreRadius" in params;
+            case GravitationalLens.MASS_SHEET: return "density" in params;
+        }
     }
 
     var createPlummerLens = Module.cwrap("createPlummerLens", "number", ["number", "number", "number"]);
