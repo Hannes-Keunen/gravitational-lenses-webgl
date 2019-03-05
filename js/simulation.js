@@ -66,34 +66,30 @@ function calculateAngularDiameterDistance(z1, z2) {
 }
 
 /** Loads multiple resources in parallel. */
-function ResourceLoader() {
+function loadResources(names, callback) {
+    var complete = false;
+    var resources = {};
+    var requests = {};
 
-    this.load = function(names, callback) {
-        var complete = false;
-        var resources = {};
-        var requests = {};
-
-        for (let name of names) {
-            requests[name] = new XMLHttpRequest;
-            requests[name].onreadystatechange = function() {
-                if (this.readyState == 4 && this.status == 200) {
-                    resources[name] = this.responseText;
-                    if (Object.keys(resources).length == names.length)
-                        complete = true;
-                }
+    for (let name of names) {
+        requests[name] = new XMLHttpRequest;
+        requests[name].onreadystatechange = function() {
+            if (this.readyState == 4 && this.status == 200) {
+                resources[name] = this.responseText;
+                if (Object.keys(resources).length == names.length)
+                    complete = true;
             }
-            requests[name].open("GET", name, true);
-            requests[name].send();
         }
-
-        setTimeout(function waitForCompletion() {
-            if (complete)
-                callback(resources);
-            else
-                setTimeout(waitForCompletion, 100); 
-        });
+        requests[name].open("GET", name, true);
+        requests[name].send();
     }
 
+    setTimeout(function waitForCompletion() {
+        if (complete)
+            callback(resources);
+        else
+            setTimeout(waitForCompletion, 100); 
+    });
 }
 
 /** Helper for shader uniforms. */
@@ -282,8 +278,8 @@ function GravitationalLens(redshift, strength, model, params) {
     }
 
     this.setModel = function(model, params) {
-        if (!this.checkParams(params))
-            throw new Error("invalid parameters for lens model " + this.model);
+        if (!this.checkParams(model, params))
+            throw new Error("invalid parameters for lens model " + model);
         this.model = model;
         this.params = params;
     }
@@ -326,8 +322,8 @@ function GravitationalLens(redshift, strength, model, params) {
         destroyLens(lens);
     }
 
-    this.checkParams = function(params) {
-        switch (this.model) {
+    this.checkParams = function(model, params) {
+        switch (model) {
             case GravitationalLens.PLUMMER: return "mass" in params && "angularWidth" in params;
             case GravitationalLens.SIS: return "velocityDispersion" in params;
             case GravitationalLens.NSIS: return "velocityDispersion" in params && "angularCoreRadius" in params;
@@ -380,7 +376,7 @@ function Simulation(canvasID, size, angularSize) {
         this.canvas.height = size;
         this.gl = canvas.getContext("webgl2");
         this.helper = new GLHelper(this.gl);
-        new ResourceLoader().load(
+        loadResources(
             ["shaders/vs_simulation.glsl", "shaders/fs_simulation.glsl",
              "shaders/vs_display.glsl", "shaders/fs_display.glsl"],
             this.loadShaders.bind(this));
@@ -404,6 +400,10 @@ function Simulation(canvasID, size, angularSize) {
         // TODO: this doesn't work as expected
     }
 
+    this.setAngularSize = function(angularSize) {
+        this.angularSize = angularSize;
+    }
+
     this.setLensRedshiftValue = function(value) {
         this.lens.setRedshiftValue(value);
         // update the distance to the lens for all source planes
@@ -416,6 +416,7 @@ function Simulation(canvasID, size, angularSize) {
     }
 
     this.start = function() {
+        this.uniforms["u_angularSize"].value = this.angularSize;
         this.lens.calculateAlphaVectors(this.size, this.angularSize, this.helper);
         this.started = true;
     }
