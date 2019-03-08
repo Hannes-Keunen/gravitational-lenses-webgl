@@ -267,6 +267,10 @@ function GravitationalLens(redshift, strength, model, params) {
     this.model = model;         /** Lens model for alpha calculation */
     this.params = params;       /** Model-specific parameters */
     this.alphaTexture = null;   /** WebGL texture where alpha vectors are stored */
+    this.translationX = 0;
+    this.translationY = 0;
+    this.rotationX = 0;
+    this.rotationY = 0;
 
     this.constructor = function() {
         this.D_d = calculateAngularDiameterDistance(this.redshift, 0.0);
@@ -284,14 +288,24 @@ function GravitationalLens(redshift, strength, model, params) {
         this.params = params;
     }
 
+    this.setTranslation = function(x, y) {
+        this.translationX = x;
+        this.translationY = y;
+    }
+
+    this.setRotation = function(x, y) {
+        this.rotationX = x;
+        this.rotationY = y;
+    }
+
     this.calculateAlphaVectors = function(simulationSize, angularSize, glhelper) {
         switch (this.model) {
             case GravitationalLens.PLUMMER: var lens = createPlummerLens(this.D_d*DIST_MPC, this.params.mass*MASS_SUN, this.params.angularWidth*ANGLE_ARCSEC); break;
-            case GravitationalLens.SIS: var lens = createSISLens(this.D_d*DIST_MPC, this.params.velocityDispersion); break;
-            case GravitationalLens.NSIS: var lens = createNSISLens(this.D_d*DIST_MPC, this.params.velocityDispersion, this.params.angularCoreRadius); break;
-            case GravitationalLens.SIE: var lens = createSIELens(this.D_d*DIST_MPC, this.params.velocityDispersion, this.params.ellipticity); break;
-            case GravitationalLens.NSIE: var lens = createNSIELens(this.D_d*DIST_MPC, this.params.velocityDispersion, this.params.ellipticity, this.params.angularCoreRadius); break;
-            case GravitationalLens.MASS_SHEET: var lens = createMassSheetLens(this.D_d*DIST_MPC, this.params.density); break;
+            case GravitationalLens.SIS: var lens = createSISLens(this.D_d*DIST_MPC, this.params.velocityDispersion*1000); break;
+            case GravitationalLens.NSIS: var lens = createNSISLens(this.D_d*DIST_MPC, this.params.velocityDispersion*1000, this.params.angularCoreRadius); break;
+            case GravitationalLens.SIE: var lens = createSIELens(this.D_d*DIST_MPC, this.params.velocityDispersion*1000, this.params.ellipticity); break;
+            case GravitationalLens.NSIE: var lens = createNSIELens(this.D_d*DIST_MPC, this.params.velocityDispersion*1000, this.params.ellipticity, this.params.angularCoreRadius); break;
+            // case GravitationalLens.MASS_SHEET: var lens = createMassSheetLens(this.D_d*DIST_MPC, this.params.density); break;
         }
 
         var alphas = new Float32Array(simulationSize * simulationSize * 2);
@@ -300,6 +314,8 @@ function GravitationalLens(redshift, strength, model, params) {
             for (let x = 0; x < simulationSize; x++) {
                 var theta_x = (x - simulationSize / 2) / simulationSize * angularSize;
                 var theta_y = (y - simulationSize / 2) / simulationSize * angularSize;
+                theta_x = this.transformThetaX(theta_x);
+                theta_y = this.transformThetaY(theta_y);
                 var alpha_x = calculateLensAlphaX(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCSEC; // + 0.5;
                 var alpha_y = calculateLensAlphaY(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCSEC; // + 0.5;
                 alphas[  (x + simulationSize * y) * 2  ] = alpha_x;
@@ -322,6 +338,14 @@ function GravitationalLens(redshift, strength, model, params) {
         destroyLens(lens);
     }
 
+    this.transformThetaX = function(theta) {
+        return theta;
+    }
+
+    this.transformThetaY = function(theta) {
+        return theta;
+    }
+
     this.checkParams = function(model, params) {
         switch (model) {
             case GravitationalLens.PLUMMER: return "mass" in params && "angularWidth" in params;
@@ -329,7 +353,8 @@ function GravitationalLens(redshift, strength, model, params) {
             case GravitationalLens.NSIS: return "velocityDispersion" in params && "angularCoreRadius" in params;
             case GravitationalLens.SIE: return "velocityDispersion" in params && "ellipticity" in params;
             case GravitationalLens.NSIE: return "velocityDispersion" in params && "ellipticity" in params && "angularCoreRadius" in params;
-            case GravitationalLens.MASS_SHEET: return "density" in params;
+            // case GravitationalLens.MASS_SHEET: return "density" in params;
+            default: return false;
         }
     }
 
@@ -338,7 +363,7 @@ function GravitationalLens(redshift, strength, model, params) {
     var createNSISLens = Module.cwrap("createNSISLens", "number", ["number", "number", "number"]);
     var createSIELens = Module.cwrap("createSIELens", "number", ["number", "number", "number"]);
     var createNSIELens = Module.cwrap("createNSIELens", "number", ["number", "number", "number", "number"]);
-    var createMassSheetLens = Module.cwrap("createMassSheetLens", "number", ["number", "number"]);
+    // var createMassSheetLens = Module.cwrap("createMassSheetLens", "number", ["number", "number"]);
     var calculateLensAlphaX = Module.cwrap("calculateLensAlphaX", "number", ["number", "number", "number", "number", "number"]);
     var calculateLensAlphaY = Module.cwrap("calculateLensAlphaY", "number", ["number", "number", "number", "number", "number"]);
     var destroyLens = Module.cwrap("destroyLens", null, ["number"]);
@@ -383,7 +408,7 @@ function Simulation(canvasID, size, angularSize) {
         this.fbtexture = this.helper.createTexture(size, size);
         this.framebuffer = this.helper.createFramebuffer(this.fbtexture);
 
-        this.lens = new GravitationalLens(1.0, 10.0, GravitationalLens.PLUMMER, {mass: 1e14, angularWidth: 60});
+        this.lens = new GravitationalLens(1.0, 1.0, GravitationalLens.PLUMMER, {mass: 1e14, angularWidth: 60});
 
         this.uniforms["u_size"] = new Uniform(Uniform.FLOAT, this.size);
         this.uniforms["u_angularSize"] = new Uniform(Uniform.FLOAT, this.angularSize);

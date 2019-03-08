@@ -106,7 +106,7 @@ function SISControls(parameterCallback) {
     this.velocityDispersionSlider = this.view.querySelector("#sis_velocitydispersion_slider");
     this.velocityDispersionDisplay = this.view.querySelector("#sis_velocitydispersion_value");
 
-    this.params = { velocityDispersion: 0 };
+    this.params = { velocityDispersion: 100 };
     this.parameterCallback = parameterCallback;
 
     this.enable = function() {
@@ -140,7 +140,7 @@ function NSISControls(parameterCallback) {
     this.angularCoreRadiusSlider = this.view.querySelector("#nsis_angularcoreradius_slider");
     this.angularCoreRadiusDisplay = this.view.querySelector("#nsis_angularcoreradius_value");
 
-    this.params = { velocityDispersion: 0, angularCoreRadius: 0 };
+    this.params = { velocityDispersion: 100, velocityDispersion: 60 };
     this.parameterCallback = parameterCallback;
 
     this.enable = function() {
@@ -184,7 +184,7 @@ function SIEControls(parameterCallback) {
     this.ellipticitySlider = this.view.querySelector("#sie_ellipticity_slider");
     this.ellipticityDisplay = this.view.querySelector("#sie_ellipticity_value");
 
-    this.params = { velocityDispersion: 0, ellipticity: 0 };
+    this.params = { velocityDispersion: 100, ellipticity: 0.5 };
     this.parameterCallback = parameterCallback;
 
     this.enable = function() {
@@ -202,7 +202,7 @@ function SIEControls(parameterCallback) {
     this.initDefaults = function() {
         this.velocityDispersionDisplay.innerHTML = this.params.velocityDispersion;
         this.velocityDispersionSlider.value = this.params.velocityDispersion;
-        this.ellipticityDisplay.innerHTML = this.params.ellipticity;
+        this.ellipticityDisplay.innerHTML = this.params.ellipticity*100;
         this.ellipticitySlider.value = this.params.ellipticity;
     }
 
@@ -213,8 +213,8 @@ function SIEControls(parameterCallback) {
     }
 
     this.ellipticityCallback = function() {
-        this.params.ellipticity = this.ellipticitySlider.value;
-        this.ellipticityDisplay.innerHTML = this.params.ellipticity;
+        this.params.ellipticity = this.ellipticitySlider.value/100;
+        this.ellipticityDisplay.innerHTML = this.ellipticitySlider.value;
         this.parameterCallback(this.params);
     }
 
@@ -230,7 +230,7 @@ function NSIEControls(parameterCallback) {
     this.angularCoreRadiusSlider = this.view.querySelector("#nsie_angularcoreradius_slider");
     this.angularCoreRadiusDisplay = this.view.querySelector("#nsie_angularcoreradius_value");
 
-    this.params = { velocityDispersion: 0, ellipticity: 0, angularCoreRadius: 0 };
+    this.params = { velocityDispersion: 100, ellipticity: 0.5, velocityDispersion: 60 };
     this.parameterCallback = parameterCallback;
 
     this.enable = function() {
@@ -250,8 +250,8 @@ function NSIEControls(parameterCallback) {
     this.initDefaults = function() {
         this.velocityDispersionDisplay.innerHTML = this.params.velocityDispersion;
         this.velocityDispersionSlider.value = this.params.velocityDispersion;
-        this.ellipticityDisplay.innerHTML = this.params.ellipticity;
-        this.ellipticitySlider.value = this.params.ellipticity;
+        this.ellipticityDisplay.innerHTML = this.params.ellipticity*100;
+        this.ellipticitySlider.value = this.params.ellipticity*100;
         this.angularCoreRadiusDisplay.innerHTML = this.params.angularCoreRadius;
         this.angularCoreRadiusSlider.value = this.params.angularCoreRadius;
     }
@@ -263,8 +263,8 @@ function NSIEControls(parameterCallback) {
     }
 
     this.ellipticityCallback = function() {
-        this.params.ellipticity = this.ellipticitySlider.value;
-        this.ellipticityDisplay.innerHTML = this.params.ellipticity;
+        this.params.ellipticity = this.ellipticitySlider.value/100;
+        this.ellipticityDisplay.innerHTML = this.ellipticitySlider.value;
         this.parameterCallback(this.params);
     }
 
@@ -314,11 +314,22 @@ function Controls(sim) {
     this.angularSizeSlider = document.getElementById("angularsize_slider");
     this.angularSizeDisplay = document.getElementById("angularsize_value");
     this.sourcePlaneList = document.getElementById("source_plane_list");
+
     this.lensRedshiftSlider = document.getElementById("lens_redshift_slider");
+    this.lensRedshiftDisplay = document.getElementById("lens_redshift_value");
     this.lensStrengthDisplay = document.getElementById("lens_strength_value");
     this.lensStrengthSlider = document.getElementById("lens_strength_slider");
-    this.lensRedshiftDisplay = document.getElementById("lens_redshift_value");
+
+    this.lensTranslationXDisplay = document.getElementById("lens_translation_x_value");
+    this.lensTranslationXSlider = document.getElementById("lens_translation_x_slider");
+    this.lensTranslationYDisplay = document.getElementById("lens_translation_y_value");
+    this.lensTranslationYSlider = document.getElementById("lens_translation_y_slider");
+    this.lensRotationXDisplay = document.getElementById("lens_rotation_x_value");
+    this.lensRotationXSlider = document.getElementById("lens_rotation_x_slider");
+    this.lensRotationYDisplay = document.getElementById("lens_rotation_y_value");
+    this.lensRotationYSlider = document.getElementById("lens_rotation_y_slider");
     this.lensModelPicker = document.getElementById("lens_model_picker");
+
     this.startSimulationButton = document.getElementById("start_simulation");
     this.sourcePlaneList = document.getElementById("source_plane_list");
     this.addSourcePlaneButton = document.getElementById("add_source_plane");
@@ -336,6 +347,10 @@ function Controls(sim) {
         this.angularSizeSlider.addEventListener("input", this.angularSizeCallback.bind(this));
         this.lensRedshiftSlider.addEventListener("input", this.lensRedshiftCallback.bind(this));
         this.lensStrengthSlider.addEventListener("input", this.lensStrengthCallback.bind(this));
+        this.lensTranslationXSlider.addEventListener("input", this.lensTranslationCallback.bind(this));
+        this.lensTranslationYSlider.addEventListener("input", this.lensTranslationCallback.bind(this));
+        this.lensRotationXSlider.addEventListener("input", this.lensRotationCallback.bind(this));
+        this.lensRotationYSlider.addEventListener("input", this.lensRotationCallback.bind(this));
         this.lensModelPicker.addEventListener("change", this.lensModelCallback.bind(this));
         this.addSourcePlaneButton.addEventListener("click", this.addSourcePlane.bind(this));
         this.startSimulationButton.addEventListener("click", this.startSimulationCallback.bind(this));
@@ -346,7 +361,7 @@ function Controls(sim) {
             new NSISControls(this.lensParameterCallback.bind(this)),
             new SIEControls(this.lensParameterCallback.bind(this)),
             new NSIEControls(this.lensParameterCallback.bind(this)),
-            new MassSheetControls(this.lensParameterCallback.bind(this)),
+            // new MassSheetControls(this.lensParameterCallback.bind(this)),
         ];
         this.lensControls[0].enable();
 
@@ -391,6 +406,18 @@ function Controls(sim) {
     this.lensStrengthCallback = function() {
         this.simulation.lens.strength = this.lensStrengthSlider.value;
         this.lensStrengthDisplay.innerHTML = this.lensStrengthSlider.value;
+    }
+
+    this.lensTranslationCallback = function() {
+        this.simulation.lens.setTranslation(this.lensTranslationXSlider.value, this.lensTranslationYSlider.value);
+        this.lensTranslationXDisplay.innerHTML = this.lensTranslationXSlider.value;
+        this.lensTranslationYDisplay.innerHTML = this.lensTranslationYSlider.value;
+    }
+
+    this.lensRotationCallback = function() {
+        this.simulation.lens.setRotation(this.lensRotationXSlider.value, this.lensRotationYSlider.value);
+        this.lensRotationXDisplay.innerHTML = this.lensRotationXSlider.value;
+        this.lensRotationYDisplay.innerHTML = this.lensRotationYSlider.value;
     }
 
     this.lensModelCallback = function() {
