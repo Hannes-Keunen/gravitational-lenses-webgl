@@ -32,25 +32,29 @@ body {
     width: 100%;
 }
 
-#source_plane_list {
+.w-100 {
+    width: 100%;
+}
+
+.controls-list {
     padding: 0px 20px;
 }
 
-#source_plane_list .source-plane-controls {
+.controls-list .controls-list-item {
     border-bottom: 1px solid white;
     padding: 8px 0px;
 }
 
-#source_plane_list .source-plane-controls:first-child {
+.controls-list .controls-list-item:first-child {
     padding-top: 0px;
 }
 
-#source_plane_list .source-plane-controls:last-child {
+.controls-list .controls-list-item:last-child {
     border-bottom: none;
     padding-bottom: 0px;
 }
 
-#source_plane_list button {
+.controls-list button {
     width: 100%;
     margin: 8px 0px;
 }

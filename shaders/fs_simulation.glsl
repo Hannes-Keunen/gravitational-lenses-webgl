@@ -22,6 +22,7 @@ uniform float u_size;               //< Canvas size, in pixels
 uniform float u_angularSize;        //< Angular size of the simulation, in arcseconds
 uniform float u_lensStrength;       //< Strength factor for the lens effect
 uniform float u_D_d;                //< Lens distance, in Mpc
+uniform float u_enabled;            //< Whether the lens effect is enabled or not
 
 in vec2 v_pos;
 in vec2 v_texpos;
@@ -38,6 +39,11 @@ vec2 angleToAbsolutePosition(vec2 angle) {
     return angle / u_angularSize * u_size;
 }
 
+/** Checks if the point is on the i'th source plane. */
+bool isOnSourcePlane(vec2 beta, int i) {
+    return length(beta - u_source_planes[i].origin) < u_source_planes[i].radius;
+}
+
 int traceTheta(vec2 theta) {
     vec2 alpha = vec2(texture(u_alphaTexture, v_texpos)) * u_lensStrength;
 
@@ -46,16 +52,16 @@ int traceTheta(vec2 theta) {
     for (int i = 0; i < int(u_num_source_planes); i++) {
         int index = -1;
         vec2 beta;
-        if (u_source_planes[i].D_s > u_D_d) {
-            // source plane is further away than the lens
+        if (u_enabled == 1.0 && u_source_planes[i].D_s > u_D_d) {
+            // source plane is further away than the lens and the lens effect is enabled
             beta = theta*ANGLE_ARCSEC - (u_source_planes[i].D_ds / u_source_planes[i].D_s) * alpha*ANGLE_ARCSEC;
             beta = beta / ANGLE_ARCSEC;
         } else {
-            // source plane is closer than the lens; don't apply lens effect
+            // source plane is closer than the lens or the lens effect is disabled
             beta = theta;
         }
 
-        if (length(angleToAbsolutePosition(beta) - u_source_planes[i].origin) < u_source_planes[i].radius) {
+        if (isOnSourcePlane(angleToAbsolutePosition(beta), i)) {
             if (closest_Ds < 0.0 || closest_Ds > u_source_planes[i].D_s) {
                 closest_index = i;
                 closest_Ds = u_source_planes[i].D_s;

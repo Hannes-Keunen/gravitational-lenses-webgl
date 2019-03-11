@@ -4,6 +4,7 @@
         <title>Gravitational Lenses</title>
         <link rel="stylesheet" type="text/css" href="styles.css">
         <script src="bin/grale.js"></script>
+        <script src="js/utils.js"></script>
         <script src="js/simulation.js"></script>
         <script src="js/controls.js"></script>
         <script src="js/main.js"></script>
@@ -27,102 +28,29 @@
             </div>
             <div class="controls-section">
                 Lens plane:<br>
-                redshift (z): <span id="lens_redshift_value"></span>
+                Redshift (z): <span id="lens_redshift_value"></span>
                 <div class="slider-container">
                     <input type="range" min="50" max="300" value="100" id="lens_redshift_slider">
                 </div>
-                strength: <span id="lens_strength_value"></span>
-                <div class="slider-container">
-                    <input type="range" min="1" max="100" value="1" id="lens_strength_slider">
-                </div>
-                translation x: <span id="lens_translation_x_value"></span>
-                <div class="slider-container">
-                    <input type="range" min="-240" max="240" value="0" id="lens_translation_x_slider">
-                </div>
-                translation y: <span id="lens_translation_y_value"></span>
-                <div class="slider-container">
-                    <input type="range" min="-240" max="240" value="0" id="lens_translation_y_slider">
-                </div>
-                rotation x: <span id="lens_rotation_x_value"></span>
-                <div class="slider-container">
-                    <input type="range" min="-90" max="90" value="0" id="lens_rotation_x_slider">
-                </div>
-                rotation y: <span id="lens_rotation_y_value"></span>
-                <div class="slider-container">
-                    <input type="range" min="-90" max="90" value="0" id="lens_rotation_y_slider">
-                </div>
-                model: 
+                <button id="disable_lenses" class="w-100" disabled>Disable effect</button>
+                <button id="start_simulation" class="w-100"disabled >Start simulation</button>
+            </div>
+            <div class="controls-section">
+                Lenses: 
                 <select id="lens_model_picker">
                     <option value="1">Plummer</option>
                     <option value="2">SIS</option>
                     <option value="3">NSIS</option>
                     <option value="4">SIE</option>
                     <option value="5">NSIE</option>
-                    <!-- <option value="6">Mass sheet</option> -->
-                </select><br>
-                <div id="lens_params_list">
-                    <div id="plummer_controls">
-                        mass: <span id="plummer_mass_value"></span> sun masses
-                        <div class="slider-container">
-                            <input type="range" min="1e13" max="1e16" value="1e14" id="plummer_mass_slider">
-                        </div>
-                        angular width: <span id="plummer_angularwidth_value"></span> arc seconds
-                        <div class="slider-container">
-                            <input type="range" min="0" max="120" value="60" id="plummer_angularwidth_slider">
-                        </div>
-                    </div>
-                    <div id="sis_controls" hidden>
-                        velocity dispersion: <span id="sis_velocitydispersion_value"></span> km/s
-                        <div class="slider-container">
-                            <input type="range" min="50" max="500" value="100" id="sis_velocitydispersion_slider">
-                        </div>
-                    </div>
-                    <div id="nsis_controls" hidden>
-                        velocity dispersion: <span id="nsis_velocitydispersion_value"></span> km/s
-                        <div class="slider-container">
-                            <input type="range" min="50" max="500" value="100" id="nsis_velocitydispersion_slider">
-                        </div>
-                        angular core radius: <span id="nsis_angularcoreradius_value"></span> arc seconds
-                        <div class="slider-container">
-                            <input type="range" min="0" max="120" value="60" id="nsis_angularcoreradius_slider">
-                        </div>
-                    </div>
-                    <div id="sie_controls" hidden>
-                        velocity dispersion: <span id="sie_velocitydispersion_value"></span> km/s
-                        <div class="slider-container">
-                            <input type="range" min="50" max="500" value="100" id="sie_velocitydispersion_slider">
-                        </div>
-                        ellipticity: <span id="sie_ellipticity_value"></span> %
-                        <div class="slider-container">
-                            <input type="range" min="0" max="100" value="50" id="sie_ellipticity_slider">
-                        </div>
-                    </div>
-                    <div id="nsie_controls" hidden>
-                        velocity dispersion: <span id="nsie_velocitydispersion_value"></span> km/s
-                        <div class="slider-container">
-                            <input type="range" min="50" max="500" value="100" id="nsie_velocitydispersion_slider">
-                        </div>
-                        ellipticity: <span id="nsie_ellipticity_value"></span> %
-                        <div class="slider-container">
-                            <input type="range" min="0" max="100" value="50" id="nsie_ellipticity_slider">
-                        </div>
-                        angular core radius: <span id="nsie_angularcoreradius_value"></span> arc seconds
-                        <div class="slider-container">
-                            <input type="range" min="0" max="120" value="60" id="nsie_angularcoreradius_slider">
-                        </div>
-                    </div>
-                    <!-- <div id="mass_sheet_controls" hidden>
-                        density: <span id="masssheet_density_value"></span> kg/m2
-                        <div class="slider-container">
-                            <input type="range" min="0" max="120" value="60" id="masssheet_density_slider">
-                        </div>
-                    </div> -->
-                </div>
-                <button id="start_simulation" disabled>Start simulation</button>
+                    <option value="6">Mass sheet</option>
+                </select>
+                <button id="add_lens">+</button>
+                <ol id="lens_list" class="controls-list"></ol>
             </div>
             <div class="controls-section">
                 Source planes: <button id="add_source_plane">+</button>
-                <ol id="source_plane_list"></ol>
+                <ol id="source_plane_list" class="controls-list"></ol>
             </div>
         </div>
     </body>

@@ -1,3 +1,4 @@
+#include <grale/compositelens.h>
 #include <grale/plummerlens.h>
 #include <grale/masssheetlens.h>
 #include <grale/nsislens.h>
@@ -51,7 +52,21 @@ grale::MassSheetLens *EMSCRIPTEN_KEEPALIVE createMassSheetLens(double D_d, doubl
     return lens;
 }
 
-float EMSCRIPTEN_KEEPALIVE calculateLensAlphaX(grale::GravitationalLens *lens, double theta_x, double theta_y) {
+grale::CompositeLensParams *EMSCRIPTEN_KEEPALIVE createCompositeLensParams() {
+    return new grale::CompositeLensParams();
+}
+
+void EMSCRIPTEN_KEEPALIVE addLensToComposite(grale::CompositeLensParams *params, double factor, double pos_x, double pos_y, double angle, const grale::GravitationalLens *lens) {
+    params->addLens(factor, grale::Vector2Dd(pos_x, pos_y), angle, *lens);
+}
+
+grale::CompositeLens *EMSCRIPTEN_KEEPALIVE createCompositeLens(double D_d, const grale::CompositeLensParams *params) {
+    grale::CompositeLens *lens = new grale::CompositeLens;
+    lens->init(D_d, params);
+    return lens;
+}
+
+float EMSCRIPTEN_KEEPALIVE calculateLensAlphaX(const grale::GravitationalLens *lens, double theta_x, double theta_y) {
     grale::Vector2Dd alpha;
     lens->getAlphaVector(grale::Vector2Dd(theta_x, theta_y), &alpha);
     return alpha.getX();
@@ -61,6 +76,10 @@ float EMSCRIPTEN_KEEPALIVE calculateLensAlphaY(grale::GravitationalLens *lens, d
     grale::Vector2Dd alpha;
     lens->getAlphaVector(grale::Vector2Dd(theta_x, theta_y), &alpha);
     return alpha.getY();
+}
+
+void EMSCRIPTEN_KEEPALIVE destroyLensParams(grale::GravitationalLensParams *params) {
+    delete params;
 }
 
 void EMSCRIPTEN_KEEPALIVE destroyLens(grale::GravitationalLens *lens) {

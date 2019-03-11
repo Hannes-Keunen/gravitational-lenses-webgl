@@ -8,234 +8,6 @@ const ANGLE_DEGREE  = Math.PI / 180.0;
 const ANGLE_ARCMIN  = ANGLE_DEGREE / 60;
 const ANGLE_ARCSEC  = ANGLE_ARCMIN / 60;
 
-/** Calculates the angular distance in Mpc between two object, based on their redshifts. */
-function calculateAngularDiameterDistance(z1, z2) {
-    var h   = 0.7;          /* Hubble constant */
-    var W_m = 0.3;          /* Matter density */
-    var W_r = 0.0;          /* Radiation density */
-    var W_v = 0.7;          /* Vacuum density */
-    var c   = 299792458.0   /* Light speed */
-    var TH  = 1.0/100000.0
-    var w   = -1.0;
-    var num = 10000;
-
-    var sum = 0.0;
-    var R2 = 1.0/(1.0+Math.min(z1, z2));
-    var R1 = 1.0/(1.0+Math.max(z1, z2));
-    var dR = (R2-R1)/(1.0*num);
-    var R = R1;
-
-    var W_k = 1.0 - W_v - W_r - W_m;
-
-    if (Math.abs(W_k) < 1e-7) // flat enough
-    {
-        // console.log("Assuming Wk = 0 (is really " + W_k + ")");
-        W_k = 0.0;
-    }
-
-    for (var i = 0 ; i < num ; i++, R += dR)
-    {
-        var term1 = W_v*Math.pow(R,1.0-3.0*w);
-        var term2 = W_m*R;
-        var term3 = W_r;
-        var term4 = W_k*R*R;
-
-        var val1 = 1.0/Math.sqrt(term1+term2+term3+term4);
-
-        term1 = W_v*Math.pow(R+dR,1.0-3.0*w);
-        term2 = W_m*(R+dR);
-        term3 = W_r;
-        term4 = W_k*(R+dR)*(R+dR);
-
-        var val2 = 1.0/Math.sqrt(term1+term2+term3+term4);
-
-        sum += ((val1+val2)/2.0)*dR; // trapezium rule
-    }
-
-    var A = 0.0;
-
-    if (W_k == 0.0)
-        A = sum;
-    else if (W_k > 0)
-        A = (1.0/Math.sqrt(W_k))*Math.sinh(Math.sqrt(W_k)*sum);
-    else // W_k < 0
-        A = (1.0/Math.sqrt(-W_k))*Math.sin(Math.sqrt(-W_k)*sum);
-
-    var result = c*A*((1.0/(1.0+Math.max(z1, z2)))*TH)/h;
-    return result;
-}
-
-/** Loads multiple resources in parallel. */
-function loadResources(names, callback) {
-    var complete = false;
-    var resources = {};
-    var requests = {};
-
-    for (let name of names) {
-        requests[name] = new XMLHttpRequest;
-        requests[name].onreadystatechange = function() {
-            if (this.readyState == 4 && this.status == 200) {
-                resources[name] = this.responseText;
-                if (Object.keys(resources).length == names.length)
-                    complete = true;
-            }
-        }
-        requests[name].open("GET", name, true);
-        requests[name].send();
-    }
-
-    setTimeout(function waitForCompletion() {
-        if (complete)
-            callback(resources);
-        else
-            setTimeout(waitForCompletion, 100); 
-    });
-}
-
-/** Helper for shader uniforms. */
-function Uniform(type, value) {
-    this.type = type;
-    this.value = value;
-}
-
-Uniform.FLOAT = 1;
-Uniform.VEC2 = 2;
-
-/** Contains helper methods for common WebGL operations. */
-function GLHelper(gl) {
-    this.gl = gl;
-    this.vertexbuffer;          /* WebGLBuffer */
-    this.uniformLocations = {}; /* [WebGLProgram => [String => WebGLUniformLocation]] */
-
-    this.constructor = function() {
-        vertexdata = new Float32Array([
-            -1.0, -1.0, 
-            -1.0, 1.0,
-            1.0, -1.0,
-            1.0, 1.0 ]);
-        this.vertexbuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexbuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, vertexdata, gl.STATIC_DRAW);
-    }
-
-    /** Creates a single shader. */
-    this.createShader = function(type, source) {
-        var shader = gl.createShader(type);
-        gl.shaderSource(shader, source);
-        gl.compileShader(shader);
-
-        var compiled = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
-        if (!compiled) {
-            var error = gl.getShaderInfoLog(shader);
-            gl.deleteShader(shader);
-            throw new Error("Error compiling shader: " + error);
-        }
-
-        return shader;
-    }
-
-    /** Creates a basic shader program with vertex and fragment shaders. */
-    this.createProgram = function(vertexSource, fragmentSource) {
-        var vertexShader = this.createShader(gl.VERTEX_SHADER, vertexSource);
-        var fragmentShader = this.createShader(gl.FRAGMENT_SHADER, fragmentSource);
-        var program = gl.createProgram();
-        gl.attachShader(program, vertexShader);
-        gl.attachShader(program, fragmentShader);
-        gl.linkProgram(program);
-        var linked = gl.getProgramParameter(program, gl.LINK_STATUS);
-        if (!linked) {
-            var error = gl.getProgramInfoLog(program);
-            gl.deleteProgram(program);
-            throw new Error("Error linking program: " + error);
-        }
-        return program;
-    }
-
-    /** Creates a new texture. */
-    this.createTexture = function(width, height, internalFormat = gl.RGBA, format = gl.RGBA, type = gl.UNSIGNED_BYTE, data = null) {
-        var texture = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, data);
-        return texture;
-    }
-
-    /** Creates a new framebuffer with the given texture as it's color attachment. */
-    this.createFramebuffer = function(texture) {
-        var fb = gl.createFramebuffer();
-        gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
-
-        var status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
-        if (status != gl.FRAMEBUFFER_COMPLETE)
-            throw new Error("Framebuffer is not complete, return value is " + status);
-        
-        return fb;
-    }
-
-    /** 
-     * Runs a shader program and stores it's output in the given framebuffer,
-     * or the default framebuffer if the framebuffer is null.
-     */
-    this.runProgram = function(program, textures, uniforms, framebuffer) {
-        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-
-        gl.clearColor(0.0, 0.0, 0.0, 1.0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-
-        gl.useProgram(program);
-
-        // Bind textures
-        var i = 0;
-        Object.keys(textures).forEach(function(key) {
-            gl.activeTexture(gl.TEXTURE0 + i);
-            gl.bindTexture(gl.TEXTURE_2D, textures[key]);
-            var loc = this.getUniformLocation(program, key);
-            gl.uniform1i(loc, i);
-            i++;
-        }.bind(this));
-
-        // Bind uniforms
-        Object.keys(uniforms).forEach(function(key) {
-            this.applyUniform(program, key, uniforms[key]);
-        }.bind(this));
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexbuffer);
-        gl.enableVertexAttribArray(0);  // Vertex positions are hardcoded at location 0
-        gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    }
-
-    this.applyUniform = function(program, name, uniform) {
-        var loc = this.getUniformLocation(program, name);
-        switch (uniform.type) {
-            case Uniform.FLOAT: gl.uniform1f(loc, uniform.value); break;
-            case Uniform.VEC2: gl.uniform2f(loc, uniform.value[0], uniform.value[1]); break;
-            default: throw new Error("Invalid uniform type: " + uniform.type + "(value: " + uniform.value + ")");
-        }
-    }
-
-    /** Returns the location of a shader uniform variable. */
-    this.getUniformLocation = function(program, name) {
-        if (!(program in this.uniformLocations))
-            this.uniformLocations[program] = {};
-
-        if (name in this.uniformLocations[program]) {
-            return this.uniformLocations[program][name];
-        } else {
-            loc = gl.getUniformLocation(program, name);
-            this.uniformLocations[program][name] = loc;
-            return loc;
-        }
-    }
-
-    this.constructor();
-}
-
 /** A circular source plane. */
 function SourcePlane(redshift, lensRedshift, x, y, radius) {
     this.redshift = redshift;   /** The redshift value */
@@ -260,31 +32,17 @@ function SourcePlane(redshift, lensRedshift, x, y, radius) {
 }
 
 /** Gravitational lenses */
-function GravitationalLens(redshift, strength, model, params) {
-    this.redshift = redshift;   /** The redshift value */
-    this.strength = strength;   /** Strength factor */
-    this.D_d;                   /** The angular diameter distance, in Mpc */
-    this.model = model;         /** Lens model for alpha calculation */
-    this.params = params;       /** Model-specific parameters */
-    this.alphaTexture = null;   /** WebGL texture where alpha vectors are stored */
+function GravitationalLens(model) {
+    this.model;             /** Lens model for alpha calculation */
+    this.params;            /** Model-specific parameters */
+    this.strength = 1;
     this.translationX = 0;
     this.translationY = 0;
-    this.rotationX = 0;
-    this.rotationY = 0;
+    this.angle = 0;
 
-    this.constructor = function() {
-        this.D_d = calculateAngularDiameterDistance(this.redshift, 0.0);
-    }
-
-    this.setRedshiftValue = function(redshift) {
-        this.redshift = redshift;
-        this.D_d = calculateAngularDiameterDistance(this.redshift, 0.0);
-    }
-
-    this.setModel = function(model, params) {
-        if (!this.checkParams(model, params))
-            throw new Error("invalid parameters for lens model " + model);
-        this.model = model;
+    this.setParams = function(params) {
+        if (!this.checkParams(this.model, params))
+            throw new Error("invalid parameters for lens model " + this.model);
         this.params = params;
     }
 
@@ -293,20 +51,98 @@ function GravitationalLens(redshift, strength, model, params) {
         this.translationY = y;
     }
 
-    this.setRotation = function(x, y) {
-        this.rotationX = x;
-        this.rotationY = y;
+    this.setAngle = function(angle) {
+        this.angle = angle;
+    }
+
+    this.createHandle = function(D_d) {
+        switch (this.model) {
+            case GravitationalLens.PLUMMER: return createPlummerLens(D_d*DIST_MPC, this.params.mass*MASS_SUN, this.params.angularWidth*ANGLE_ARCSEC);
+            case GravitationalLens.SIS:     return createSISLens(D_d*DIST_MPC, this.params.velocityDispersion*1000);
+            case GravitationalLens.NSIS:    return createNSISLens(D_d*DIST_MPC, this.params.velocityDispersion*1000, this.params.angularCoreRadius);
+            case GravitationalLens.SIE:     return createSIELens(D_d*DIST_MPC, this.params.velocityDispersion*1000, this.params.ellipticity);
+            case GravitationalLens.NSIE:    return createNSIELens(D_d*DIST_MPC, this.params.velocityDispersion*1000, this.params.ellipticity, this.params.angularCoreRadius);
+            // case GravitationalLens.MASS_SHEET: var lens = createMassSheetLens(this.D_d*DIST_MPC, this.params.density); break;
+            default: throw new Error("Invalid lens model: " + model);
+        }
+    }
+
+    this.checkParams = function(model, params) {
+        switch (model) {
+            case GravitationalLens.PLUMMER: return "mass" in params && "angularWidth" in params;
+            case GravitationalLens.SIS:     return "velocityDispersion" in params;
+            case GravitationalLens.NSIS:    return "velocityDispersion" in params && "angularCoreRadius" in params;
+            case GravitationalLens.SIE:     return "velocityDispersion" in params && "ellipticity" in params;
+            case GravitationalLens.NSIE:    return "velocityDispersion" in params && "ellipticity" in params && "angularCoreRadius" in params;
+            // case GravitationalLens.MASS_SHEET: return "density" in params;
+            default: throw new Error("Invalid lens model: " + model);
+        }
+    }
+
+    this.model = model;
+    this.setParams(GravitationalLens.GetDefaultParams(model));
+}
+
+/** Lens models */
+GravitationalLens.PLUMMER = 1;
+GravitationalLens.SIS = 2;
+GravitationalLens.NSIS = 3;
+GravitationalLens.SIE = 4;
+GravitationalLens.NSIE = 5;
+GravitationalLens.MASS_SHEET = 6;
+
+GravitationalLens.GetDefaultParams = function(model) {
+    switch (model) {
+        case GravitationalLens.PLUMMER: return { mass: 1e14, angularWidth: 60 };
+        case GravitationalLens.SIS:     return { velocityDispersion: 100 };
+        case GravitationalLens.NSIS:    return { velocityDispersion: 100, angularCoreRadius: 60 };
+        case GravitationalLens.SIE:     return { velocityDispersion: 100, ellipticity: 0.5 };
+        case GravitationalLens.NSIE:    return { velocityDispersion: 100, ellipticity: 0.5, angularCoreRadius: 60 };
+        default: throw new Error("Invalid lens model: " + model);
+    }
+}
+
+GravitationalLens.GetModelName = function(model) {
+    switch (model) {
+        case GravitationalLens.PLUMMER: return "Plummer";
+        case GravitationalLens.SIS:     return "SIS";
+        case GravitationalLens.NSIS:    return "NSIS";
+        case GravitationalLens.SIE:     return "SIE";
+        case GravitationalLens.NSIE:    return "NSIE";
+        default: throw new Error("Invalid lens model: " + model);
+    }
+}
+
+function LensPlane(redshift) {
+    this.redshift;              /** The redshift value */
+    this.D_d;                   /** The angular diameter distance, in Mpc */
+    this.lenses = [];           /** A list of GravitationalLenses */
+    this.alphaTexture;          /** A WebGL texture where alphas will be stored */
+
+    this.setRedshiftValue = function(redshift) {
+        this.redshift = redshift;
+        this.D_d = calculateAngularDiameterDistance(this.redshift, 0.0);
+    }
+
+    this.addLens = function(lens) {
+        this.lenses.push(lens);
+    }
+
+    this.removeLens = function(lens) {
+        var index = this.lenses.indexOf(lens);
+        this.lenses.splice(index, 1);
+        return index;
     }
 
     this.calculateAlphaVectors = function(simulationSize, angularSize, glhelper) {
-        switch (this.model) {
-            case GravitationalLens.PLUMMER: var lens = createPlummerLens(this.D_d*DIST_MPC, this.params.mass*MASS_SUN, this.params.angularWidth*ANGLE_ARCSEC); break;
-            case GravitationalLens.SIS: var lens = createSISLens(this.D_d*DIST_MPC, this.params.velocityDispersion*1000); break;
-            case GravitationalLens.NSIS: var lens = createNSISLens(this.D_d*DIST_MPC, this.params.velocityDispersion*1000, this.params.angularCoreRadius); break;
-            case GravitationalLens.SIE: var lens = createSIELens(this.D_d*DIST_MPC, this.params.velocityDispersion*1000, this.params.ellipticity); break;
-            case GravitationalLens.NSIE: var lens = createNSIELens(this.D_d*DIST_MPC, this.params.velocityDispersion*1000, this.params.ellipticity, this.params.angularCoreRadius); break;
-            // case GravitationalLens.MASS_SHEET: var lens = createMassSheetLens(this.D_d*DIST_MPC, this.params.density); break;
+        var handles = [];
+        var params = createCompositeLensParams();
+        for (let lens of this.lenses) {
+            var handle = lens.createHandle(this.D_d);
+            addLensToComposite(params, lens.strength, lens.translationX*ANGLE_ARCSEC, lens.translationY*ANGLE_ARCSEC, lens.angle, handle);
+            handles.push(handle);
         }
+        var lens = createCompositeLens(this.D_d, params);
 
         var alphas = new Float32Array(simulationSize * simulationSize * 2);
         // var min_x, min_y, max_x, max_y;
@@ -314,8 +150,6 @@ function GravitationalLens(redshift, strength, model, params) {
             for (let x = 0; x < simulationSize; x++) {
                 var theta_x = (x - simulationSize / 2) / simulationSize * angularSize;
                 var theta_y = (y - simulationSize / 2) / simulationSize * angularSize;
-                theta_x = this.transformThetaX(theta_x);
-                theta_y = this.transformThetaY(theta_y);
                 var alpha_x = calculateLensAlphaX(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCSEC; // + 0.5;
                 var alpha_y = calculateLensAlphaY(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCSEC; // + 0.5;
                 alphas[  (x + simulationSize * y) * 2  ] = alpha_x;
@@ -332,52 +166,17 @@ function GravitationalLens(redshift, strength, model, params) {
         }
 
         // console.log("min: ("+min_x+","+min_y+"); max: ("+max_x+","+max_y+")");
-        if (this.alphaTexture != null)
+        if (this.alphaTexture != undefined)
             glhelper.gl.deleteTexture(this.alphaTexture);
         this.alphaTexture = glhelper.createTexture(simulationSize, simulationSize, glhelper.gl.RG32F, glhelper.gl.RG, glhelper.gl.FLOAT, alphas);
         destroyLens(lens);
+        destroyLensParams(params);
+        for (let handle of handles)
+            destroyLens(handle);
     }
 
-    this.transformThetaX = function(theta) {
-        return theta;
-    }
-
-    this.transformThetaY = function(theta) {
-        return theta;
-    }
-
-    this.checkParams = function(model, params) {
-        switch (model) {
-            case GravitationalLens.PLUMMER: return "mass" in params && "angularWidth" in params;
-            case GravitationalLens.SIS: return "velocityDispersion" in params;
-            case GravitationalLens.NSIS: return "velocityDispersion" in params && "angularCoreRadius" in params;
-            case GravitationalLens.SIE: return "velocityDispersion" in params && "ellipticity" in params;
-            case GravitationalLens.NSIE: return "velocityDispersion" in params && "ellipticity" in params && "angularCoreRadius" in params;
-            // case GravitationalLens.MASS_SHEET: return "density" in params;
-            default: return false;
-        }
-    }
-
-    var createPlummerLens = Module.cwrap("createPlummerLens", "number", ["number", "number", "number"]);
-    var createSISLens = Module.cwrap("createSISLens", "number", ["number", "number"]);
-    var createNSISLens = Module.cwrap("createNSISLens", "number", ["number", "number", "number"]);
-    var createSIELens = Module.cwrap("createSIELens", "number", ["number", "number", "number"]);
-    var createNSIELens = Module.cwrap("createNSIELens", "number", ["number", "number", "number", "number"]);
-    // var createMassSheetLens = Module.cwrap("createMassSheetLens", "number", ["number", "number"]);
-    var calculateLensAlphaX = Module.cwrap("calculateLensAlphaX", "number", ["number", "number", "number", "number", "number"]);
-    var calculateLensAlphaY = Module.cwrap("calculateLensAlphaY", "number", ["number", "number", "number", "number", "number"]);
-    var destroyLens = Module.cwrap("destroyLens", null, ["number"]);
-
-    this.constructor();
+    this.setRedshiftValue(redshift);
 }
-
-/** Lens models */
-GravitationalLens.PLUMMER = 1;
-GravitationalLens.SIS = 2;
-GravitationalLens.NSIS = 3;
-GravitationalLens.SIE = 4;
-GravitationalLens.NSIE = 5;
-GravitationalLens.MASS_SHEET = 6;
 
 function Simulation(canvasID, size, angularSize) {
     this.size = size;               /** Simulation size in pixels */
@@ -408,13 +207,14 @@ function Simulation(canvasID, size, angularSize) {
         this.fbtexture = this.helper.createTexture(size, size);
         this.framebuffer = this.helper.createFramebuffer(this.fbtexture);
 
-        this.lens = new GravitationalLens(1.0, 1.0, GravitationalLens.PLUMMER, {mass: 1e14, angularWidth: 60});
+        this.lensPlane = new LensPlane(0.5);
 
         this.uniforms["u_size"] = new Uniform(Uniform.FLOAT, this.size);
         this.uniforms["u_angularSize"] = new Uniform(Uniform.FLOAT, this.angularSize);
         this.uniforms["u_num_source_planes"] = new Uniform(Uniform.FLOAT, 0);
-        this.uniforms["u_D_d"] = new Uniform(Uniform.FLOAT, this.lens.D_d);
-        this.uniforms["u_lensStrength"] = new Uniform(Uniform.FLOAT, this.lens.strength);
+        this.uniforms["u_enabled"] = new Uniform(Uniform.FLOAT, 0);
+        this.uniforms["u_D_d"] = new Uniform(Uniform.FLOAT, this.lensPlane.D_d);
+        this.uniforms["u_lensStrength"] = new Uniform(Uniform.FLOAT, 1);
     }
 
     this.setSize = function(size) {
@@ -429,20 +229,18 @@ function Simulation(canvasID, size, angularSize) {
         this.angularSize = angularSize;
     }
 
-    this.setLensRedshiftValue = function(value) {
-        this.lens.setRedshiftValue(value);
-        // update the distance to the lens for all source planes
-        for (let sourcePlane of this.sourcePlanes)
-            sourcePlane.setRedshiftValue(sourcePlane.redshift, this.lens.redshift);
+    this.enableLensEffect = function() {
+        this.uniforms["u_enabled"].value = 1;
     }
 
-    this.setLensModel = function(model, params) {
-        this.lens.setModel(model, params);
+    this.disableLensEffect = function() {
+        this.uniforms["u_enabled"].value = 0;
     }
 
     this.start = function() {
         this.uniforms["u_angularSize"].value = this.angularSize;
-        this.lens.calculateAlphaVectors(this.size, this.angularSize, this.helper);
+        this.lensPlane.calculateAlphaVectors(this.size, this.angularSize, this.helper);
+        this.enableLensEffect();
         this.started = true;
     }
 
@@ -457,20 +255,20 @@ function Simulation(canvasID, size, angularSize) {
     }
 
     this.isReady = function() {
-        return this.started && this.displayShader && this.simulationShader;
+        return this.started && this.displayShader != undefined && this.simulationShader != undefined;
     }
 
     this.update = function() {
         this.updateUniforms();
-        this.helper.runProgram(this.simulationShader, {u_alphaTexture: this.lens.alphaTexture}, this.uniforms, this.framebuffer);
+        this.helper.runProgram(this.simulationShader, {u_alphaTexture: this.lensPlane.alphaTexture}, this.uniforms, this.framebuffer);
         this.helper.runProgram(this.displayShader, {u_texture: this.fbtexture}, {}, null);
     }
 
     this.updateUniforms = function() {
         this.uniforms["u_size"].value = this.size;
         this.uniforms["u_num_source_planes"].value = this.sourcePlanes.length;
-        this.uniforms["u_D_d"].value = this.lens.D_d;
-        this.uniforms["u_lensStrength"].value = this.lens.strength;
+        this.uniforms["u_D_d"].value = this.lensPlane.D_d;
+        this.uniforms["u_lensStrength"].value = 1;
         for (let i = 0; i < this.sourcePlanes.length; i++) {
             let sourcePlane = this.sourcePlanes[i];
             this.uniforms["u_source_planes["+i+"].origin"] = new Uniform(Uniform.VEC2, [sourcePlane.x, sourcePlane.y]);
