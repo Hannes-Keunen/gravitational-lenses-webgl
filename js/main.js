@@ -10,3 +10,7 @@ window.onload = function() {
         window.requestAnimationFrame(render);
     })();
 }
+
+window.onunload = function() {
+    sim.destroy();
+}

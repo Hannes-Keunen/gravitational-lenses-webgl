@@ -138,7 +138,11 @@ function GLHelper(gl) {
             gl.deleteProgram(program);
             throw new Error("Error linking program: " + error);
         }
-        return program;
+        return {
+            program: program,
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+        };
     }
 
     /** Creates a new texture. */

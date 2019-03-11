@@ -217,6 +217,18 @@ function Simulation(canvasID, size, angularSize) {
         this.uniforms["u_lensStrength"] = new Uniform(Uniform.FLOAT, 1);
     }
 
+    this.destroy = function() {
+        this.gl.deleteTexture(this.lensPlane.alphaTexture);
+        this.gl.deleteFramebuffer(this.framebuffer);
+        this.gl.deleteTexture(this.fbtexture);
+        this.gl.deleteProgram(this.simulationShader.program);
+        this.gl.deleteProgram(this.displayShader.program);
+        this.gl.deleteShader(this.simulationShader.vertexShader);
+        this.gl.deleteShader(this.simulationShader.fragmentShader);
+        this.gl.deleteShader(this.displayShader.vertexShader);
+        this.gl.deleteShader(this.displayShader.fragmentShader);
+    }
+
     this.setSize = function(size) {
         this.size = size;
         this.canvas.width = size;
@@ -262,8 +274,8 @@ function Simulation(canvasID, size, angularSize) {
 
     this.update = function() {
         this.updateUniforms();
-        this.helper.runProgram(this.simulationShader, {u_alphaTexture: this.lensPlane.alphaTexture}, this.uniforms, this.framebuffer);
-        this.helper.runProgram(this.displayShader, {u_texture: this.fbtexture}, {}, null);
+        this.helper.runProgram(this.simulationShader.program, {u_alphaTexture: this.lensPlane.alphaTexture}, this.uniforms, this.framebuffer);
+        this.helper.runProgram(this.displayShader.program, {u_texture: this.fbtexture}, {}, null);
     }
 
     this.updateUniforms = function() {
