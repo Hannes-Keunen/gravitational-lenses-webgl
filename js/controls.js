@@ -23,10 +23,14 @@ function SourcePlaneControls(view, sourcePlane, simulation, removeCallback) {
     }
 
     this.initDefaults = function() {
-        this.redshiftDisplay.innerHTML  = this.redshiftSlider.value / 100;
-        this.xDisplay.innerHTML         = this.xSlider.value / 100 * this.simulation.size;
-        this.xDisplay.innerHTML         = this.xSlider.value / 100 * this.simulation.size;
-        this.radiusDisplay.innerHTML    = this.radiusSlider.value / 100 * this.simulation.size;
+        this.redshiftDisplay.innerHTML  = this.sourcePlane.redshift;
+        this.redshiftSlider.value       = this.sourcePlane.redshift * 100;
+        this.xDisplay.innerHTML         = this.sourcePlane.x;
+        this.xSlider.innerHTML          = this.sourcePlane.x;
+        this.xDisplay.innerHTML         = this.sourcePlane.y;
+        this.ySlider.innerHTML          = this.sourcePlane.y;
+        this.radiusDisplay.innerHTML    = this.sourcePlane.radius;
+        this.radiusSlider.innerHTML     = this.sourcePlane.radius;
     }
 
     this.redshiftSliderCallback = function() {
@@ -58,7 +62,7 @@ function SourcePlaneControls(view, sourcePlane, simulation, removeCallback) {
     this.initDefaults();
 }
 
-/** Controls for paramaters specific to the plummer model */
+/** Controls for parameters specific to the plummer model */
 function PlummerControls(view, params) {
     this.massSlider             = view.querySelector("#plummer_mass_slider");
     this.massDisplay            = view.querySelector("#plummer_mass_value");
@@ -96,11 +100,11 @@ function PlummerControls(view, params) {
 PlummerControls.CreateView = function() {
     return `mass: <span id="plummer_mass_value"></span> sun masses
             <div class="slider-container">
-                <input type="range" min="1e13" max="1e16" value="1e14" id="plummer_mass_slider">
+                <input type="range" min="1e13" max="1e16" id="plummer_mass_slider">
             </div>
             angular width: <span id="plummer_angularwidth_value"></span> arc seconds
             <div class="slider-container">
-                <input type="range" min="0" max="120" value="60" id="plummer_angularwidth_slider">
+                <input type="range" min="0" max="120" id="plummer_angularwidth_slider">
             </div>`
 }
 
@@ -132,7 +136,7 @@ function SISControls(view, params) {
 SISControls.CreateView = function() {
     return `velocity dispersion: <span id="sis_velocitydispersion_value"></span> km/s
             <div class="slider-container">
-                <input type="range" min="50" max="500" value="100" id="sis_velocitydispersion_slider">
+                <input type="range" min="50" max="500" id="sis_velocitydispersion_slider">
             </div>`
 }
 
@@ -175,11 +179,11 @@ function NSISControls(view, params) {
 NSISControls.CreateView = function() {
     return `velocity dispersion: <span id="nsis_velocitydispersion_value"></span> km/s
             <div class="slider-container">
-                <input type="range" min="50" max="500" value="100" id="nsis_velocitydispersion_slider">
+                <input type="range" min="50" max="500" id="nsis_velocitydispersion_slider">
             </div>
             angular core radius: <span id="nsis_angularcoreradius_value"></span> arc seconds
             <div class="slider-container">
-                <input type="range" min="0" max="120" value="60" id="nsis_angularcoreradius_slider">
+                <input type="range" min="0" max="120" id="nsis_angularcoreradius_slider">
             </div>`
 }
 
@@ -201,7 +205,7 @@ function SIEControls(view, params) {
         this.velocityDispersionDisplay.innerHTML    = this.params.velocityDispersion;
         this.velocityDispersionSlider.value         = this.params.velocityDispersion;
         this.ellipticityDisplay.innerHTML           = this.params.ellipticity * 100;
-        this.ellipticitySlider.value                = this.params.ellipticity;
+        this.ellipticitySlider.value                = this.params.ellipticity * 100;
     }
 
     this.velocityDispersionCallback = function() {
@@ -221,11 +225,11 @@ function SIEControls(view, params) {
 SIEControls.CreateView = function() {
     return `velocity dispersion: <span id="sie_velocitydispersion_value"></span> km/s
             <div class="slider-container">
-                <input type="range" min="50" max="500" value="100" id="sie_velocitydispersion_slider">
+                <input type="range" min="50" max="500" id="sie_velocitydispersion_slider">
             </div>
             ellipticity: <span id="sie_ellipticity_value"></span> %
             <div class="slider-container">
-                <input type="range" min="0" max="100" value="50" id="sie_ellipticity_slider">
+                <input type="range" min="0" max="100" id="sie_ellipticity_slider">
             </div>`
 }
 
@@ -261,7 +265,7 @@ function NSIEControls(view, params) {
     }
 
     this.ellipticityCallback = function() {
-        this.params.ellipticity = this.ellipticitySlider.value/100;
+        this.params.ellipticity = this.ellipticitySlider.value / 100;
         this.ellipticityDisplay.innerHTML = this.ellipticitySlider.value;
     }
 
@@ -277,15 +281,15 @@ function NSIEControls(view, params) {
 NSIEControls.CreateView = function() {
     return `velocity dispersion: <span id="nsie_velocitydispersion_value"></span> km/s
             <div class="slider-container">
-                <input type="range" min="50" max="500" value="100" id="nsie_velocitydispersion_slider">
+                <input type="range" min="50" max="500" id="nsie_velocitydispersion_slider">
             </div>
             ellipticity: <span id="nsie_ellipticity_value"></span> %
             <div class="slider-container">
-                <input type="range" min="0" max="100" value="50" id="nsie_ellipticity_slider">
+                <input type="range" min="0" max="100" id="nsie_ellipticity_slider">
             </div>
             angular core radius: <span id="nsie_angularcoreradius_value"></span> arc seconds
             <div class="slider-container">
-                <input type="range" min="0" max="120" value="60" id="nsie_angularcoreradius_slider">
+                <input type="range" min="0" max="120" id="nsie_angularcoreradius_slider">
             </div>`
 }
 
@@ -314,10 +318,10 @@ function MassSheetControls(view, params) {
     this.initDefaults();
 }
 
-NSIEControls.CreateView = function() {
+MassSheetControls.CreateView = function() {
     return `density: <span id="masssheet_density_value"></span> kg/m2
             <div class="slider-container">
-                <input type="range" min="0" max="120" value="60" id="masssheet_density_slider">
+                <input type="range" min="0" max="120" id="masssheet_density_slider">
             </div>`
 }
 
@@ -456,7 +460,8 @@ function Controls(sim) {
         this.lensRedshiftDisplay.innerHTML  = this.simulation.lensPlane.redshift;
         this.lensRedshiftSlider.value       = this.simulation.lensPlane.redshift * 100;
         this.simulationSize                 = this.sizePicker.value;
-        this.angularSizeDisplay.innerHTML   = this.angularSizeSlider.value;
+        this.angularSizeDisplay.innerHTML   = this.simulation.angularSize;
+        this.angularSizeSlider.value        = this.simulation.angularSize;
     }
 
     this.resizeCallback = function() {
@@ -510,19 +515,19 @@ function Controls(sim) {
             `Model: <span id="lens_model_name"></span><br>
              Strength: <span id="lens_strength_value"></span>
              <div class="slider-container">
-                 <input type="range" min="1" max="100" value="1" id="lens_strength_slider">
+                 <input type="range" min="1" max="100" id="lens_strength_slider">
              </div>
              Translation x: <span id="lens_translation_x_value"></span>
              <div class="slider-container">
-                 <input type="range" min="-240" max="240" value="0" id="lens_translation_x_slider">
+                 <input type="range" min="-240" max="240" id="lens_translation_x_slider">
              </div>
              Translation y: <span id="lens_translation_y_value"></span>
              <div class="slider-container">
-                 <input type="range" min="-240" max="240" value="0" id="lens_translation_y_slider">
+                 <input type="range" min="-240" max="240" id="lens_translation_y_slider">
              </div>
              Angle: <span id="lens_angle_value"></span> degrees
              <div class="slider-container">
-                 <input type="range" min="-90" max="90" value="0" id="lens_angle_slider">
+                 <input type="range" min="-90" max="90" id="lens_angle_slider">
              </div>
              <div id="lens_model_params"></div>
              <button id="lens_delete">Delete</button>`
@@ -548,19 +553,19 @@ function Controls(sim) {
         row.innerHTML =
             `Redshift (z): <span id="sourceplane_redshift_value">1.5</span>
              <div class="slider-container">
-                <input id="sourceplane_redshift_slider" type="range" min="50" max="300" value="150">
+                <input id="sourceplane_redshift_slider" type="range" min="50" max="300">
              </div>
              Origin x: <span id="sourceplane_x_value">0</span>
              <div class="slider-container">
-                <input id="sourceplane_x_slider" type="range" min="-100" max="100" value="0">
+                <input id="sourceplane_x_slider" type="range" min="-100" max="100">
              </div>
              Origin y: <span id="sourceplane_y_value">0</span>
              <div class="slider-container">
-                <input id="sourceplane_y_slider" type="range" min="-100" max="100" value="0">
+                <input id="sourceplane_y_slider" type="range" min="-100" max="100">
              </div>
              Radius: <span id="sourceplane_radius_value"></span>
              <div class="slider-container">
-                <input id="sourceplane_radius_slider" type="range" min="0" max="200" value="12">
+                <input id="sourceplane_radius_slider" type="range" min="0" max="200">
              </div>
              <button id="sourceplane_delete">Delete</button>`
         this.sourcePlaneList.appendChild(row);

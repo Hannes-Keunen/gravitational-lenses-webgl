@@ -239,6 +239,8 @@ function Simulation(canvasID, size, angularSize) {
 
     this.start = function() {
         this.uniforms["u_angularSize"].value = this.angularSize;
+        for (let sourcePlane of this.sourcePlanes)
+            sourcePlane.setRedshiftValue(sourcePlane.redshift, this.lensPlane.redshift);
         this.lensPlane.calculateAlphaVectors(this.size, this.angularSize, this.helper);
         this.enableLensEffect();
         this.started = true;
