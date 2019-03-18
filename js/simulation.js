@@ -93,11 +93,11 @@ GravitationalLens.MASS_SHEET = 6;
 
 GravitationalLens.GetDefaultParams = function(model) {
     switch (model) {
-        case GravitationalLens.PLUMMER: return { mass: 1e14, angularWidth: 60 };
-        case GravitationalLens.SIS:     return { velocityDispersion: 100 };
-        case GravitationalLens.NSIS:    return { velocityDispersion: 100, angularCoreRadius: 60 };
-        case GravitationalLens.SIE:     return { velocityDispersion: 100, ellipticity: 0.5 };
-        case GravitationalLens.NSIE:    return { velocityDispersion: 100, ellipticity: 0.5, angularCoreRadius: 60 };
+        case GravitationalLens.PLUMMER: return { mass: 1e14, angularWidth: 5 };
+        case GravitationalLens.SIS:     return { velocityDispersion: 150 };
+        case GravitationalLens.NSIS:    return { velocityDispersion: 150, angularCoreRadius: 5 };
+        case GravitationalLens.SIE:     return { velocityDispersion: 150, ellipticity: 0.5 };
+        case GravitationalLens.NSIE:    return { velocityDispersion: 150, ellipticity: 0.5, angularCoreRadius: 5 };
         default: throw new Error("Invalid lens model: " + model);
     }
 }

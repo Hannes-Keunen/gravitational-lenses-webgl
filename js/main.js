@@ -2,7 +2,7 @@ var sim = null;
 var controls = null;
 
 window.onload = function() {
-    sim = new Simulation("canvas", Math.min(window.innerHeight, window.innerWidth), 120);
+    sim = new Simulation("canvas", Math.min(window.innerHeight, window.innerWidth), 30);
     controls = new Controls(sim);
     (function render() {
         if (sim.isReady())

@@ -23,14 +23,14 @@
                 </select><br>
                 Angular size: <span id="angularsize_value"></span> arc seconds
                 <div class="slider-container">
-                    <input type="range" min="60" max="480" id="angularsize_slider">
+                    <input type="range" min="10" max="120" id="angularsize_slider">
                 </div>
             </div>
             <div class="controls-section">
                 Lens plane:<br>
                 Redshift (z): <span id="lens_redshift_value"></span>
                 <div class="slider-container">
-                    <input type="range" min="50" max="300" id="lens_redshift_slider">
+                    <input type="range" min="10" max="150" id="lens_redshift_slider">
                 </div>
                 <button id="disable_lenses" class="w-100" disabled>Disable effect</button>
                 <button id="start_simulation" class="w-100"disabled >Start simulation</button>
@@ -43,7 +43,7 @@
                     <option value="3">NSIS</option>
                     <option value="4">SIE</option>
                     <option value="5">NSIE</option>
-                    <option value="6">Mass sheet</option>
+                    <!-- <option value="6">Mass sheet</option> -->
                 </select>
                 <button id="add_lens">+</button>
                 <ol id="lens_list" class="controls-list"></ol>

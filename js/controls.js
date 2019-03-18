@@ -77,20 +77,20 @@ function PlummerControls(view, params) {
     }
 
     this.initDefaults = function() {
-        this.massDisplay.innerHTML          = this.params.mass.toExponential();
+        this.massDisplay.innerHTML          = this.params.mass.toExponential(2);
         this.massSlider.value               = this.params.mass;
-        this.angularWidthDisplay.innerHTML  = this.params.angularWidth;
-        this.angularWidthSlider.value       = this.params.angularWidth;
+        this.angularWidthDisplay.innerHTML  = this.params.angularWidth.toFixed(1);
+        this.angularWidthSlider.value       = this.params.angularWidth * 10;
     }
 
     this.massCallback = function() {
-        this.params.mass = this.massSlider.value;
-        this.massDisplay.innerHTML = Math.round(this.params.mass).toExponential();
+        this.params.mass = parseInt(this.massSlider.value);
+        this.massDisplay.innerHTML = this.params.mass.toExponential(2);
     }
 
     this.angularWidthCallback = function() {
-        this.params.angularWidth = this.angularWidthSlider.value;
-        this.angularWidthDisplay.innerHTML = this.params.angularWidth;
+        this.params.angularWidth = this.angularWidthSlider.value / 10;
+        this.angularWidthDisplay.innerHTML = this.params.angularWidth.toFixed(1);
     }
 
     this.setCallbacks();
@@ -98,13 +98,13 @@ function PlummerControls(view, params) {
 }
 
 PlummerControls.CreateView = function() {
-    return `mass: <span id="plummer_mass_value"></span> sun masses
+    return `mass: <span id="plummer_mass_value"></span> solar masses
             <div class="slider-container">
                 <input type="range" min="1e13" max="1e15" id="plummer_mass_slider">
             </div>
             angular width: <span id="plummer_angularwidth_value"></span> arc seconds
             <div class="slider-container">
-                <input type="range" min="0" max="120" id="plummer_angularwidth_slider">
+                <input type="range" min="1" max="100" id="plummer_angularwidth_slider">
             </div>`
 }
 
@@ -159,7 +159,7 @@ function NSISControls(view, params) {
         this.velocityDispersionDisplay.innerHTML    = this.params.velocityDispersion;
         this.velocityDispersionSlider.value         = this.params.velocityDispersion;
         this.angularCoreRadiusDisplay.innerHTML     = this.params.angularCoreRadius;
-        this.angularCoreRadiusSlider.value          = this.params.angularCoreRadius;
+        this.angularCoreRadiusSlider.value          = this.params.angularCoreRadius * 10;
     }
 
     this.velocityDispersionCallback = function() {
@@ -168,8 +168,8 @@ function NSISControls(view, params) {
     }
 
     this.angularCoreRadiusCallback = function() {
-        this.params.angularCoreRadius = this.angularCoreRadiusSlider.value;
-        this.angularCoreRadiusDisplay.innerHTML = this.params.angularCoreRadius;
+        this.params.angularCoreRadius = this.angularCoreRadiusSlider.value / 10;
+        this.angularCoreRadiusDisplay.innerHTML = this.params.angularCoreRadius.toFixed(1);
     }
 
     this.setCallbacks();
@@ -183,7 +183,7 @@ NSISControls.CreateView = function() {
             </div>
             angular core radius: <span id="nsis_angularcoreradius_value"></span> arc seconds
             <div class="slider-container">
-                <input type="range" min="0" max="120" id="nsis_angularcoreradius_slider">
+                <input type="range" min="1" max="100" id="nsis_angularcoreradius_slider">
             </div>`
 }
 
@@ -214,7 +214,7 @@ function SIEControls(view, params) {
     }
 
     this.ellipticityCallback = function() {
-        this.params.ellipticity = this.ellipticitySlider.value/100;
+        this.params.ellipticity = this.ellipticitySlider.value / 100;
         this.ellipticityDisplay.innerHTML = this.ellipticitySlider.value;
     }
 
@@ -229,7 +229,7 @@ SIEControls.CreateView = function() {
             </div>
             ellipticity: <span id="sie_ellipticity_value"></span> %
             <div class="slider-container">
-                <input type="range" min="0" max="100" id="sie_ellipticity_slider">
+                <input type="range" min="1" max="99" id="sie_ellipticity_slider">
             </div>`
 }
 
@@ -255,8 +255,8 @@ function NSIEControls(view, params) {
         this.velocityDispersionSlider.value         = this.params.velocityDispersion;
         this.ellipticityDisplay.innerHTML           = this.params.ellipticity * 100;
         this.ellipticitySlider.value                = this.params.ellipticity * 100;
-        this.angularCoreRadiusDisplay.innerHTML     = this.params.angularCoreRadius;
-        this.angularCoreRadiusSlider.value          = this.params.angularCoreRadius;
+        this.angularCoreRadiusDisplay.innerHTML     = this.params.angularCoreRadius.toFixed(1);
+        this.angularCoreRadiusSlider.value          = this.params.angularCoreRadius * 10;
     }
 
     this.velocityDispersionCallback = function() {
@@ -270,8 +270,8 @@ function NSIEControls(view, params) {
     }
 
     this.angularCoreRadiusCallback = function() {
-        this.params.angularCoreRadius = this.angularCoreRadiusSlider.value;
-        this.angularCoreRadiusDisplay.innerHTML = this.params.angularCoreRadius;
+        this.params.angularCoreRadius = this.angularCoreRadiusSlider.value / 10;
+        this.angularCoreRadiusDisplay.innerHTML = this.params.angularCoreRadius.toFixed(1);
     }
 
     this.setCallbacks();
@@ -285,11 +285,11 @@ NSIEControls.CreateView = function() {
             </div>
             ellipticity: <span id="nsie_ellipticity_value"></span> %
             <div class="slider-container">
-                <input type="range" min="0" max="100" id="nsie_ellipticity_slider">
+                <input type="range" min="1" max="99" id="nsie_ellipticity_slider">
             </div>
             angular core radius: <span id="nsie_angularcoreradius_value"></span> arc seconds
             <div class="slider-container">
-                <input type="range" min="0" max="120" id="nsie_angularcoreradius_slider">
+                <input type="range" min=1 max="100" id="nsie_angularcoreradius_slider">
             </div>`
 }
 
@@ -551,9 +551,9 @@ function Controls(sim) {
         var row = document.createElement("li");
         row.className = "controls-list-item";
         row.innerHTML =
-            `Redshift (z): <span id="sourceplane_redshift_value">1.5</span>
+            `Redshift (z): <span id="sourceplane_redshift_value"></span>
              <div class="slider-container">
-                <input id="sourceplane_redshift_slider" type="range" min="50" max="300">
+                <input id="sourceplane_redshift_slider" type="range" min="100" max="300">
              </div>
              Origin x: <span id="sourceplane_x_value">0</span>
              <div class="slider-container">

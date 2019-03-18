@@ -74,7 +74,7 @@ int traceTheta(vec2 theta) {
 
 void main() {
     float q = texture(u_qTextures[0], v_texpos).r;
-    if (q < 0.02 && q > -0.02) {
+    if (abs(q) < 0.02) {
         o_fragmentColor = vec4(1.0, 0.0, 0.0, 1.0);
     } else {
         vec2 theta = v_pos * u_angularSize;
