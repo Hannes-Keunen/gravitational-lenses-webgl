@@ -100,7 +100,7 @@ function PlummerControls(view, params) {
 PlummerControls.CreateView = function() {
     return `mass: <span id="plummer_mass_value"></span> sun masses
             <div class="slider-container">
-                <input type="range" min="1e13" max="1e16" id="plummer_mass_slider">
+                <input type="range" min="1e13" max="1e15" id="plummer_mass_slider">
             </div>
             angular width: <span id="plummer_angularwidth_value"></span> arc seconds
             <div class="slider-container">

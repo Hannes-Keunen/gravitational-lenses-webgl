@@ -186,11 +186,23 @@ function GLHelper(gl) {
         // Bind textures
         var i = 0;
         Object.keys(textures).forEach(function(key) {
-            gl.activeTexture(gl.TEXTURE0 + i);
-            gl.bindTexture(gl.TEXTURE_2D, textures[key]);
-            var loc = this.getUniformLocation(program, key);
-            gl.uniform1i(loc, i);
-            i++;
+            var texture = textures[key];
+            var uniformLocation = this.getUniformLocation(program, key);
+            if (Array.isArray(texture)) {
+                var textureUnits = new Int32Array(texture.length);
+                for (let j = 0; j < texture.length; j++) {
+                    gl.activeTexture(gl.TEXTURE0 + i);
+                    gl.bindTexture(gl.TEXTURE_2D, texture[j]);
+                    textureUnits[j] = i;
+                    i++;
+                }
+                gl.uniform1iv(uniformLocation, textureUnits);
+            } else {
+                gl.activeTexture(gl.TEXTURE0 + i);
+                gl.bindTexture(gl.TEXTURE_2D, textures[key]);
+                gl.uniform1i(uniformLocation, i);
+                i++;
+            }
         }.bind(this));
 
         // Bind uniforms
@@ -244,3 +256,4 @@ var calculateLensAlphaX         = Module.cwrap("calculateLensAlphaX", "number", 
 var calculateLensAlphaY         = Module.cwrap("calculateLensAlphaY", "number", ["number", "number", "number", "number", "number"]);
 var destroyLensParams           = Module.cwrap("destroyLensParams", null, ["number"]);
 var destroyLens                 = Module.cwrap("destroyLens", null, ["number"]);
+var calculateLensQ              = Module.cwrap("calculateLensQ", "number", ["number", "number", "number", "number", "number"]);

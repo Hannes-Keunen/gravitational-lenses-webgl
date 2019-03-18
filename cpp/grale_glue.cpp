@@ -86,4 +86,10 @@ void EMSCRIPTEN_KEEPALIVE destroyLens(grale::GravitationalLens *lens) {
     delete lens;
 }
 
+double EMSCRIPTEN_KEEPALIVE calculateLensQ(grale::GravitationalLens *lens, double theta_x, double theta_y, double D_s, double D_ds) {
+    double axx, ayy, axy;
+    lens->getAlphaVectorDerivatives(grale::Vector2Dd(theta_x, theta_y), axx, ayy, axy);
+    return (1 - (D_ds/D_s) * axx) * (1 - (D_ds/D_s) * ayy) - axy * axy;
+}
+
 }

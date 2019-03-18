@@ -15,6 +15,7 @@ struct source_plane {
 };
 
 uniform sampler2D u_alphaTexture;   //< Texture containing alpha vectors
+uniform sampler2D u_qTextures[32];  //< Texture q values for the critical lines
 
 uniform source_plane u_source_planes[32];
 uniform float u_num_source_planes;
@@ -72,11 +73,15 @@ int traceTheta(vec2 theta) {
 }
 
 void main() {
-    vec2 theta = v_pos * u_angularSize;
-
-    int index = traceTheta(theta);
-    if (index >= 0)
-        o_fragmentColor = vec4(1.0, 1.0, 1.0, 1.0);
-    else
-        o_fragmentColor = vec4(0.0, 0.0, 0.0, 1.0);
+    float q = texture(u_qTextures[0], v_texpos).r;
+    if (q < 0.02 && q > -0.02) {
+        o_fragmentColor = vec4(1.0, 0.0, 0.0, 1.0);
+    } else {
+        vec2 theta = v_pos * u_angularSize;
+        int index = traceTheta(theta);
+        if (index >= 0)
+            o_fragmentColor = vec4(1.0, 1.0, 1.0, 1.0);
+        else
+            o_fragmentColor = vec4(0.0, 0.0, 0.0, 1.0);
+    }
 }

@@ -114,10 +114,11 @@ GravitationalLens.GetModelName = function(model) {
 }
 
 function LensPlane(redshift) {
-    this.redshift;              /** The redshift value */
-    this.D_d;                   /** The angular diameter distance, in Mpc */
-    this.lenses = [];           /** A list of GravitationalLenses */
-    this.alphaTexture;          /** A WebGL texture where alphas will be stored */
+    this.redshift;          /** The redshift value */
+    this.D_d;               /** The angular diameter distance, in Mpc */
+    this.lenses = [];       /** A list of GravitationalLenses */
+    this.alphaTexture;      /** A WebGL texture where alphas will be stored */
+    this.QTextures = [];    /** An array of WebGL textures where Q values will be stored for calculating critical lines */
 
     this.setRedshiftValue = function(redshift) {
         this.redshift = redshift;
@@ -134,7 +135,7 @@ function LensPlane(redshift) {
         return index;
     }
 
-    this.calculateAlphaVectors = function(simulationSize, angularSize, glhelper) {
+    this.calculateAlphaVectors = function(simulationSize, angularSize, glhelper, sourcePlanes) {
         var handles = [];
         var params = createCompositeLensParams();
         for (let lens of this.lenses) {
@@ -145,30 +146,38 @@ function LensPlane(redshift) {
         var lens = createCompositeLens(this.D_d, params);
 
         var alphas = new Float32Array(simulationSize * simulationSize * 2);
-        // var min_x, min_y, max_x, max_y;
+        var qs = [];
+        for (let i = 0; i < sourcePlanes.length; i++)
+            qs.push(new Float32Array(simulationSize * simulationSize));
         for (let y = 0; y < simulationSize; y++) {
             for (let x = 0; x < simulationSize; x++) {
+                // alpha vector
                 var theta_x = (x - simulationSize / 2) / simulationSize * angularSize;
                 var theta_y = (y - simulationSize / 2) / simulationSize * angularSize;
-                var alpha_x = calculateLensAlphaX(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCSEC; // + 0.5;
-                var alpha_y = calculateLensAlphaY(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCSEC; // + 0.5;
+                var alpha_x = calculateLensAlphaX(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCSEC;
+                var alpha_y = calculateLensAlphaY(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCSEC;
                 alphas[  (x + simulationSize * y) * 2  ] = alpha_x;
                 alphas[(x + simulationSize * y) * 2 + 1] = alpha_y;
-                // if (min_x === undefined || isNaN(min_x)) min_x = alpha_x;
-                // if (min_y === undefined || isNaN(min_y)) min_y = alpha_y;
-                // if (max_x === undefined || isNaN(max_x)) max_x = alpha_x;
-                // if (max_y === undefined || isNaN(max_y)) max_y = alpha_y;
-                // if (alpha_x < min_x) min_x = alpha_x;
-                // if (alpha_x > max_x) max_x = alpha_x;
-                // if (alpha_y < min_y) min_y = alpha_y;
-                // if (alpha_y > max_y) max_y = alpha_y;
+
+                // critical lines
+                for (let i = 0; i < sourcePlanes.length; i++) {
+                    var q = calculateLensQ(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC, sourcePlanes[i].D_s, sourcePlanes[i].D_ds)
+                    qs[i][x + simulationSize * y] = q;
+                }
             }
         }
 
-        // console.log("min: ("+min_x+","+min_y+"); max: ("+max_x+","+max_y+")");
+        // alpha texture
         if (this.alphaTexture != undefined)
             glhelper.gl.deleteTexture(this.alphaTexture);
         this.alphaTexture = glhelper.createTexture(simulationSize, simulationSize, glhelper.gl.RG32F, glhelper.gl.RG, glhelper.gl.FLOAT, alphas);
+        // critical line textures
+        if (this.QTextures != [])
+            for (texture in this.QTextures)
+                glhelper.gl.deleteTexture(this.texture);
+        for (let i = 0; i < sourcePlanes.length; i++)
+            this.QTextures[i] = glhelper.createTexture(simulationSize, simulationSize, glhelper.gl.R32F, glhelper.gl.RED, glhelper.gl.FLOAT, qs[i]);
+        
         destroyLens(lens);
         destroyLensParams(params);
         for (let handle of handles)
@@ -253,7 +262,7 @@ function Simulation(canvasID, size, angularSize) {
         this.uniforms["u_angularSize"].value = this.angularSize;
         for (let sourcePlane of this.sourcePlanes)
             sourcePlane.setRedshiftValue(sourcePlane.redshift, this.lensPlane.redshift);
-        this.lensPlane.calculateAlphaVectors(this.size, this.angularSize, this.helper);
+        this.lensPlane.calculateAlphaVectors(this.size, this.angularSize, this.helper, this.sourcePlanes);
         this.enableLensEffect();
         this.started = true;
     }
@@ -274,7 +283,8 @@ function Simulation(canvasID, size, angularSize) {
 
     this.update = function() {
         this.updateUniforms();
-        this.helper.runProgram(this.simulationShader.program, {u_alphaTexture: this.lensPlane.alphaTexture}, this.uniforms, this.framebuffer);
+        var textures = { u_alphaTexture: this.lensPlane.alphaTexture, u_qTextures: this.lensPlane.QTextures };
+        this.helper.runProgram(this.simulationShader.program, textures, this.uniforms, this.framebuffer);
         this.helper.runProgram(this.displayShader.program, {u_texture: this.fbtexture}, {}, null);
     }
 
