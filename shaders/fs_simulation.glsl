@@ -15,9 +15,9 @@ struct source_plane {
 };
 
 uniform sampler2D u_alphaTexture;   //< Texture containing alpha vectors
-uniform sampler2D u_qTextures[32];  //< Texture q values for the critical lines
+uniform sampler2D u_qTextures[16];  //< Texture q values for the critical lines
 
-uniform source_plane u_source_planes[32];
+uniform source_plane u_source_planes[16];
 uniform float u_num_source_planes;
 uniform float u_size;               //< Canvas size, in pixels
 uniform float u_angularSize;        //< Angular size of the simulation, in arcseconds
@@ -38,6 +38,15 @@ vec2 angleToAbsolutePosition(vec2 angle) {
 /** Checks if the point is on the i'th source plane. */
 bool isOnSourcePlane(vec2 beta, int i) {
     return length(beta - u_source_planes[i].origin) < u_source_planes[i].radius;
+}
+
+bool isOnCriticalLine() {
+    for (int i = 0; i < int(u_num_source_planes); i++) {
+        float q = texture(u_qTextures[i], v_texpos).r;
+        if (abs(q) < 0.02)
+            return true;
+    }
+    return false;
 }
 
 int traceTheta(vec2 theta) {
@@ -68,8 +77,7 @@ int traceTheta(vec2 theta) {
 }
 
 void main() {
-    float q = texture(u_qTextures[0], v_texpos).r;
-    if (abs(q) < 0.02) {
+    if (isOnCriticalLine()) {
         o_fragmentColor = vec4(1.0, 0.0, 0.0, 1.0);
     } else {
         vec2 theta = v_pos * u_angularSize;
