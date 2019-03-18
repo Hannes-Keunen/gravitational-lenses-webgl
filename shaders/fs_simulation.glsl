@@ -30,11 +30,6 @@ in vec2 v_texpos;
 
 out vec4 o_fragmentColor;
 
-/** Converts a coordinate in the range [-1, 1] to a angle. */
-vec2 relativePositionToAngle(vec2 position) {
-    return position * u_angularSize;
-}
-
 /** Converts an angle to a coordinate in the range [-u_size, u_size]. */
 vec2 angleToAbsolutePosition(vec2 angle) {
     return angle / u_angularSize * u_size;
@@ -62,7 +57,7 @@ int traceTheta(vec2 theta) {
             beta = theta;
         }
 
-        if (isOnSourcePlane(angleToAbsolutePosition(beta), i)) {
+        if (isOnSourcePlane(beta, i)) {
             if (closest_Ds < 0.0 || closest_Ds > u_source_planes[i].D_s) {
                 closest_index = i;
                 closest_Ds = u_source_planes[i].D_s;

@@ -26,11 +26,11 @@ function SourcePlaneControls(view, sourcePlane, simulation, removeCallback) {
         this.redshiftDisplay.innerHTML  = this.sourcePlane.redshift;
         this.redshiftSlider.value       = this.sourcePlane.redshift * 100;
         this.xDisplay.innerHTML         = this.sourcePlane.x;
-        this.xSlider.innerHTML          = this.sourcePlane.x;
+        this.xSlider.value              = this.sourcePlane.x;
         this.xDisplay.innerHTML         = this.sourcePlane.y;
-        this.ySlider.innerHTML          = this.sourcePlane.y;
+        this.ySlider.value              = this.sourcePlane.y;
         this.radiusDisplay.innerHTML    = this.sourcePlane.radius;
-        this.radiusSlider.innerHTML     = this.sourcePlane.radius;
+        this.radiusSlider.value         = this.sourcePlane.radius * 10;
     }
 
     this.redshiftSliderCallback = function() {
@@ -39,18 +39,18 @@ function SourcePlaneControls(view, sourcePlane, simulation, removeCallback) {
     }
 
     this.xSliderCallback = function() {
-        this.xDisplay.innerHTML = this.xSlider.value / 100 * this.simulation.size;
-        this.sourcePlane.x = this.xSlider.value / 100 * this.simulation.size;
+        this.sourcePlane.x = this.xSlider.value / 10;
+        this.xDisplay.innerHTML = this.sourcePlane.x;
     }
 
     this.ySliderCallback = function() {
-        this.yDisplay.innerHTML = this.ySlider.value / 100 * this.simulation.size;
-        this.sourcePlane.y = this.ySlider.value / 100 * this.simulation.size;
+        this.sourcePlane.y = this.ySlider.value / 10;
+        this.yDisplay.innerHTML = this.sourcePlane.y;
     }
 
     this.radiusSliderCallback = function() {
-        this.radiusDisplay.innerHTML = this.radiusSlider.value / 100 * this.simulation.size;
-        this.sourcePlane.radius = this.radiusSlider.value / 100 * this.simulation.size;
+        this.sourcePlane.radius = this.radiusSlider.value / 10;
+        this.radiusDisplay.innerHTML = this.sourcePlane.radius;
     }
 
     this.deleteCallback = function() {
@@ -102,7 +102,7 @@ PlummerControls.CreateView = function() {
             <div class="slider-container">
                 <input type="range" min="1e13" max="1e15" id="plummer_mass_slider">
             </div>
-            angular width: <span id="plummer_angularwidth_value"></span> arc seconds
+            angular width: <span id="plummer_angularwidth_value"></span>"
             <div class="slider-container">
                 <input type="range" min="1" max="100" id="plummer_angularwidth_slider">
             </div>`
@@ -181,7 +181,7 @@ NSISControls.CreateView = function() {
             <div class="slider-container">
                 <input type="range" min="50" max="500" id="nsis_velocitydispersion_slider">
             </div>
-            angular core radius: <span id="nsis_angularcoreradius_value"></span> arc seconds
+            angular core radius: <span id="nsis_angularcoreradius_value"></span>"
             <div class="slider-container">
                 <input type="range" min="1" max="100" id="nsis_angularcoreradius_slider">
             </div>`
@@ -287,7 +287,7 @@ NSIEControls.CreateView = function() {
             <div class="slider-container">
                 <input type="range" min="1" max="99" id="nsie_ellipticity_slider">
             </div>
-            angular core radius: <span id="nsie_angularcoreradius_value"></span> arc seconds
+            angular core radius: <span id="nsie_angularcoreradius_value"></span>"
             <div class="slider-container">
                 <input type="range" min=1 max="100" id="nsie_angularcoreradius_slider">
             </div>`
@@ -380,9 +380,9 @@ function LensControls(view, lens, simulation, removeCallback) {
         this.strengthDisplay.innerHTML      = this.lens.strength;
         this.strengthSlider.value           = this.lens.strength * 10;
         this.translationXDisplay.innerHTML  = this.lens.translationX;
-        this.translationXSlider.value       = this.lens.translationX;
+        this.translationXSlider.value       = this.lens.translationX * 10;
         this.translationYDisplay.innerHTML  = this.lens.translationY;
-        this.translationYSlider.value       = this.lens.translationY;
+        this.translationYSlider.value       = this.lens.translationY * 10;
         this.angleDisplay.innerHTML         = this.lens.angle;
         this.angleSlider.value              = this.lens.angle;
         this.modelNameDisplay.innerHTML     = GravitationalLens.GetModelName(this.lens.model);
@@ -394,12 +394,12 @@ function LensControls(view, lens, simulation, removeCallback) {
     }
 
     this.translationXCallback = function() {
-        this.lens.translationX = this.translationXSlider.value;
+        this.lens.translationX = this.translationXSlider.value / 10;
         this.translationXDisplay.innerHTML = this.lens.translationX;
     }
 
     this.translationYCallback = function() {
-        this.lens.translationY = this.translationYSlider.value;
+        this.lens.translationY = this.translationYSlider.value / 10;
         this.translationYDisplay.innerHTML = this.lens.translationY;
     }
 
@@ -517,15 +517,15 @@ function Controls(sim) {
              <div class="slider-container">
                  <input type="range" min="1" max="100" id="lens_strength_slider">
              </div>
-             Translation x: <span id="lens_translation_x_value"></span>
+             Translation x: <span id="lens_translation_x_value"></span>"
              <div class="slider-container">
-                 <input type="range" min="-240" max="240" id="lens_translation_x_slider">
+                 <input type="range" min="-300" max="300" id="lens_translation_x_slider">
              </div>
-             Translation y: <span id="lens_translation_y_value"></span>
+             Translation y: <span id="lens_translation_y_value"></span>"
              <div class="slider-container">
-                 <input type="range" min="-240" max="240" id="lens_translation_y_slider">
+                 <input type="range" min="-300" max="300" id="lens_translation_y_slider">
              </div>
-             Angle: <span id="lens_angle_value"></span> degrees
+             Angle: <span id="lens_angle_value"></span>°
              <div class="slider-container">
                  <input type="range" min="-90" max="90" id="lens_angle_slider">
              </div>
@@ -544,7 +544,7 @@ function Controls(sim) {
 
     this.addSourcePlane = function() {
         // Add a new default source plane to the simulation
-        var sourcePlane = new SourcePlane(1.5, this.lensRedshift, 0, 0, 128);
+        var sourcePlane = new SourcePlane(1.5, this.lensRedshift, 0, 0, 10);
         this.simulation.addSourcePlane(sourcePlane);
 
         // Add controls for the new source plane
@@ -555,17 +555,17 @@ function Controls(sim) {
              <div class="slider-container">
                 <input id="sourceplane_redshift_slider" type="range" min="100" max="300">
              </div>
-             Origin x: <span id="sourceplane_x_value">0</span>
+             Origin x: <span id="sourceplane_x_value">0</span>"
              <div class="slider-container">
-                <input id="sourceplane_x_slider" type="range" min="-100" max="100">
+                <input id="sourceplane_x_slider" type="range" min="-300" max="300">
              </div>
-             Origin y: <span id="sourceplane_y_value">0</span>
+             Origin y: <span id="sourceplane_y_value">0</span>"
              <div class="slider-container">
-                <input id="sourceplane_y_slider" type="range" min="-100" max="100">
+                <input id="sourceplane_y_slider" type="range" min="-300" max="300">
              </div>
-             Radius: <span id="sourceplane_radius_value"></span>
+             Radius: <span id="sourceplane_radius_value"></span>"
              <div class="slider-container">
-                <input id="sourceplane_radius_slider" type="range" min="0" max="200">
+                <input id="sourceplane_radius_slider" type="range" min="0" max="300">
              </div>
              <button id="sourceplane_delete">Delete</button>`
         this.sourcePlaneList.appendChild(row);
