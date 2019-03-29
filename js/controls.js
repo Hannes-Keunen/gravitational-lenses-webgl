@@ -544,7 +544,7 @@ function Controls(sim) {
 
     this.addSourcePlane = function() {
         // Add a new default source plane to the simulation
-        var sourcePlane = new SourcePlane(1.5, this.lensRedshift, 0, 0, 10);
+        var sourcePlane = new SourcePlane(1.5, this.lensRedshift, 0, 0, 5);
         this.simulation.addSourcePlane(sourcePlane);
 
         // Add controls for the new source plane
@@ -565,7 +565,7 @@ function Controls(sim) {
              </div>
              Radius: <span id="sourceplane_radius_value"></span>"
              <div class="slider-container">
-                <input id="sourceplane_radius_slider" type="range" min="0" max="300">
+                <input id="sourceplane_radius_slider" type="range" min="0" max="150">
              </div>
              <button id="sourceplane_delete">Delete</button>`
         this.sourcePlaneList.appendChild(row);
