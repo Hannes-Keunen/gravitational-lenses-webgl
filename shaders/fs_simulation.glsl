@@ -7,6 +7,12 @@ const float ANGLE_DEGREE = PI / 180.0;
 const float ANGLE_ARCMIN = ANGLE_DEGREE / 60.0;
 const float ANGLE_ARCSEC = ANGLE_ARCMIN / 60.0;
 
+struct lens {
+    float strength;
+    vec2 position;
+    float angle;
+};
+
 struct source_plane {
     float D_ds;                         //< Distance to the lens, in Mpc
     float D_s;                          //< Distance to the viewer, in Mpc
@@ -14,14 +20,16 @@ struct source_plane {
     float radius;
 };
 
-uniform sampler2D u_alphaTexture;   //< Texture containing alpha vectors
-uniform sampler2D u_qTextures[16];  //< Texture q values for the critical lines
+uniform lens u_lenses[16];              //< lens parameters
+uniform sampler2D u_alphaTextures[16];  //< Texture containing alpha vectors
+uniform float u_num_lenses;
 
 uniform source_plane u_source_planes[16];
+uniform sampler2D u_derivativeTextures[16]; //< Texture containing alpha derivatives for the critical lines
 uniform float u_num_source_planes;
+
 uniform float u_size;               //< Canvas size, in pixels
 uniform float u_angularSize;        //< Angular size of the simulation, in arcseconds
-uniform float u_lensStrength;       //< Strength factor for the lens effect
 uniform float u_D_d;                //< Lens distance, in Mpc
 uniform float u_enabled;            //< Whether the lens effect is enabled or not
 
@@ -30,9 +38,9 @@ in vec2 v_texpos;
 
 out vec4 o_fragmentColor;
 
-/** Converts an angle to a coordinate in the range [-u_size, u_size]. */
-vec2 angleToAbsolutePosition(vec2 angle) {
-    return angle / u_angularSize * u_size;
+/** Converts an angle to texture coordinates */
+vec2 angleToTexcoords(vec2 angle) {
+    return angle / u_angularSize / 2.0 + vec2(0.5, 0.5);
 }
 
 /** Checks if the point is on the i'th source plane. */
@@ -40,51 +48,97 @@ bool isOnSourcePlane(vec2 beta, int i) {
     return length(beta - u_source_planes[i].origin) < u_source_planes[i].radius;
 }
 
-bool isOnCriticalLine() {
-    for (int i = 0; i < int(u_num_source_planes); i++) {
-        float q = texture(u_qTextures[i], v_texpos).r;
-        if (abs(q) < 0.02)
-            return true;
-    }
-    return false;
+vec2 transformTheta(vec2 theta, lens theLens) {
+    vec2 theta0 = theta - theLens.position;
+    return vec2(theta0.x*cos(theLens.angle) + theta0.y*sin(theLens.angle),
+                -theta0.x*sin(theLens.angle) + theta0.y*cos(theLens.angle));
 }
 
-int traceTheta(vec2 theta) {
-    vec2 alpha = vec2(texture(u_alphaTexture, v_texpos)) * u_lensStrength;
+float calculateQ(vec2 theta, float D_s, float D_ds, vec2 offset) {
 
-    int closest_index = -1;
-    float closest_Ds = -1.0;
-    for (int i = 0; i < int(u_num_source_planes); i++) {
-        int index = -1;
-        vec2 beta;
-        if (u_enabled == 1.0 && u_source_planes[i].D_s > u_D_d) {
-            // source plane is further away than the lens and the lens effect is enabled
-            beta = theta*ANGLE_ARCSEC - (u_source_planes[i].D_ds / u_source_planes[i].D_s) * alpha*ANGLE_ARCSEC;
-            beta = beta / ANGLE_ARCSEC;
-        } else {
-            // source plane is closer than the lens or the lens effect is disabled
-            beta = theta;
-        }
+    float axx = 0.0;
+	float ayy = 0.0;
+	float axy = 0.0;
 
-        if (isOnSourcePlane(beta, i)) {
-            if (closest_Ds < 0.0 || closest_Ds > u_source_planes[i].D_s) {
-                closest_index = i;
-                closest_Ds = u_source_planes[i].D_s;
-            }
-        }
+	for (int i = 0; i < int(u_num_lenses); i++) {
+		float ca = cos(u_lenses[i].angle);
+		float sa = sin(u_lenses[i].angle);
+		float ca2 = ca*ca;
+		float sa2 = sa*sa;
+		float csa = ca*sa;
+
+        vec2 theta0 = transformTheta(theta, u_lenses[i]);
+        vec2 texcoord = angleToTexcoords(theta0) + offset;
+        vec4 derivatives = texture(u_derivativeTextures[i], texcoord);
+
+		float axx0 = derivatives.x * u_lenses[i].strength;
+		float ayy0 = derivatives.y * u_lenses[i].strength;
+		float axy0 = derivatives.z * u_lenses[i].strength;
+
+		float axx1 = axx0*ca2-2.0*axy0*csa+ayy0*sa2;
+		float ayy1 = axx0*sa2+2.0*axy0*csa+ayy0*ca2;
+		float axy1 = (axx0-ayy0)*csa+axy0*(2.0*ca2-1.0);
+
+		axx += axx1;
+		ayy += ayy1;
+		axy += axy1;
+	}
+
+	return (1.0 - (D_ds/D_s) * axx) * (1.0 - (D_ds/D_s) * ayy) - (D_ds/D_s) * axy * (D_ds/D_s) * axy;
+}
+
+bool isOnCriticalLine(vec2 theta, int i) {
+    float offset = 0.002;
+
+    // use nearby points to check if there is a zero value inbetween
+    float right  = calculateQ(theta, u_source_planes[i].D_s, u_source_planes[i].D_ds,  vec2(0, offset));
+    float left   = calculateQ(theta, u_source_planes[i].D_s, u_source_planes[i].D_ds, -vec2(0, offset));
+    float bottom = calculateQ(theta, u_source_planes[i].D_s, u_source_planes[i].D_ds, -vec2(offset, 0));
+    float top    = calculateQ(theta, u_source_planes[i].D_s, u_source_planes[i].D_ds,  vec2(offset, 0));
+
+    if      (left > 0.0 && right < 0.0)   return true;
+    else if (left < 0.0 && right > 0.0)   return true;
+    else if (bottom < 0.0 && right > 0.0) return true;
+    else if (bottom > 0.0 && right < 0.0) return true;
+    else return false;
+}
+
+vec2 calculateAlpha(vec2 theta) {
+    vec2 sum = vec2(0.0, 0.0);
+    for (int i = 0; i < int(u_num_lenses); i++) {
+        vec2 theta0 = transformTheta(theta, u_lenses[i]);
+        vec2 alpha = vec2(texture(u_alphaTextures[i], angleToTexcoords(theta0)));
+        alpha *= u_lenses[i].strength;
+        alpha = vec2(alpha.x*cos(u_lenses[i].angle) - alpha.y*sin(u_lenses[i].angle),
+                     alpha.x*sin(u_lenses[i].angle) + alpha.y*cos(u_lenses[i].angle));
+        sum += alpha;
     }
-    return closest_index;
+    return sum;
+}
+
+vec4 traceTheta(vec2 theta) {
+    vec2 alpha = calculateAlpha(theta);
+
+    for (int i = 0; i < int(u_num_source_planes); i++) {
+        vec2 beta;
+        if (u_enabled == 1.0 && u_source_planes[i].D_s > u_D_d)
+            beta = theta - (u_source_planes[i].D_ds / u_source_planes[i].D_s) * alpha;
+        else
+            beta = theta;
+
+        if (isOnCriticalLine(theta, i))     // critical line
+            return vec4(1.0, 0.0, 0.0, 1.0);
+        else if (isOnCriticalLine(beta, i)) // caustic
+            return vec4(0.0, 0.0, 1.0, 1.0);
+        else if (isOnSourcePlane(theta, i)) // source plane
+            return vec4(0.0, 1.0, 0.0, 1.0);
+        else if (isOnSourcePlane(beta, i))  // image plane
+            return vec4(1.0, 1.0, 1.0, 1.0);
+    }
+    return vec4(0.0, 0.0, 0.0, 1.0);
 }
 
 void main() {
-    if (isOnCriticalLine()) {
-        o_fragmentColor = vec4(1.0, 0.0, 0.0, 1.0);
-    } else {
-        vec2 theta = v_pos * u_angularSize;
-        int index = traceTheta(theta);
-        if (index >= 0)
-            o_fragmentColor = vec4(1.0, 1.0, 1.0, 1.0);
-        else
-            o_fragmentColor = vec4(0.0, 0.0, 0.0, 1.0);
-    }
+    vec2 theta = v_pos * u_angularSize;
+    o_fragmentColor = traceTheta(theta);
 }

@@ -114,11 +114,11 @@ GravitationalLens.GetModelName = function(model) {
 }
 
 function LensPlane(redshift) {
-    this.redshift;          /** The redshift value */
-    this.D_d;               /** The angular diameter distance, in Mpc */
-    this.lenses = [];       /** A list of GravitationalLenses */
-    this.alphaTexture;      /** A WebGL texture where alphas will be stored */
-    this.QTextures = [];    /** An array of WebGL textures where Q values will be stored for calculating critical lines */
+    this.redshift;                  /** The redshift value */
+    this.D_d;                       /** The angular diameter distance, in Mpc */
+    this.lenses = [];               /** A list of GravitationalLenses */
+    this.alphaTextures = [];        /** An array of WebGL textures where alphas will be stored */
+    this.derivativeTextures = [];   /** An array of WebGL textures where alpha derivatives will be stored */
 
     this.setRedshiftValue = function(redshift) {
         this.redshift = redshift;
@@ -136,52 +136,67 @@ function LensPlane(redshift) {
     }
 
     this.calculateAlphaVectors = function(simulationSize, angularSize, glhelper, sourcePlanes) {
-        var handles = [];
-        var params = createCompositeLensParams();
+        var lenses = [];
+        var alphas = [];
+        var derivativeBuffers = [];
+        var derivativeHeaps = [];
         for (let lens of this.lenses) {
-            var handle = lens.createHandle(this.D_d);
-            addLensToComposite(params, lens.strength, lens.translationX*ANGLE_ARCSEC, lens.translationY*ANGLE_ARCSEC, lens.angle, handle);
-            handles.push(handle);
-        }
-        var lens = createCompositeLens(this.D_d, params);
+            // c++ pointer for access to GRALE functions
+            lenses.push(lens.createHandle(this.D_d));
 
-        var alphas = new Float32Array(simulationSize * simulationSize * 2);
-        var qs = [];
-        for (let i = 0; i < sourcePlanes.length; i++)
-            qs.push(new Float32Array(simulationSize * simulationSize));
+            // Storage for deflection angles for each lens
+            alphas.push(new Float32Array(simulationSize * simulationSize * 2));
+
+            // Storage for alpha derivatives
+            var bufferSize = simulationSize * simulationSize * 3 * Float32Array.BYTES_PER_ELEMENT;
+            var buffer = Module._malloc(bufferSize);
+            derivativeBuffers.push(buffer);
+            derivativeHeaps.push(new Uint8Array(Module.HEAPU8.buffer, buffer, bufferSize));
+        }
+
         for (let y = 0; y < simulationSize; y++) {
             for (let x = 0; x < simulationSize; x++) {
-                // alpha vector
                 var theta_x = (x - simulationSize / 2) / simulationSize * angularSize;
                 var theta_y = (y - simulationSize / 2) / simulationSize * angularSize;
-                var alpha_x = calculateLensAlphaX(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCSEC;
-                var alpha_y = calculateLensAlphaY(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCSEC;
-                alphas[  (x + simulationSize * y) * 2  ] = alpha_x;
-                alphas[(x + simulationSize * y) * 2 + 1] = alpha_y;
+                for (let i = 0; i < this.lenses.length; i++) {
+                    // alpha vector
+                    var alpha_x = calculateLensAlphaX(lenses[i], theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCSEC;
+                    var alpha_y = calculateLensAlphaY(lenses[i], theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCSEC;
+                    alphas[i][  (x + simulationSize * y) * 2  ] = alpha_x;
+                    alphas[i][(x + simulationSize * y) * 2 + 1] = alpha_y;
 
-                // critical lines
-                for (let i = 0; i < sourcePlanes.length; i++) {
-                    var q = calculateLensQ(lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC, sourcePlanes[i].D_s, sourcePlanes[i].D_ds)
-                    qs[i][x + simulationSize * y] = q;
+                    // alpha vector derivatives
+                    calculateAlphaVectorDerivatives(
+                        lenses[i], theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC,
+                        derivativeHeaps[i].byteOffset, (x + simulationSize * y) * 3);
                 }
             }
         }
 
-        // alpha texture
-        if (this.alphaTexture != undefined)
-            glhelper.gl.deleteTexture(this.alphaTexture);
-        this.alphaTexture = glhelper.createTexture(simulationSize, simulationSize, glhelper.gl.RG32F, glhelper.gl.RG, glhelper.gl.FLOAT, alphas);
-        // critical line textures
-        if (this.QTextures != [])
-            for (texture in this.QTextures)
-                glhelper.gl.deleteTexture(this.texture);
-        for (let i = 0; i < sourcePlanes.length; i++)
-            this.QTextures[i] = glhelper.createTexture(simulationSize, simulationSize, glhelper.gl.R32F, glhelper.gl.RED, glhelper.gl.FLOAT, qs[i]);
-        
-        destroyLens(lens);
-        destroyLensParams(params);
-        for (let handle of handles)
-            destroyLens(handle);
+        // alpha textures
+        if (this.alphaTextures != []) {
+            for (let texture of this.alphaTextures)
+                glhelper.gl.deleteTexture(texture);
+            this.alphaTextures = [];
+        }
+        for (let i = 0; i < this.lenses.length; i++)
+            this.alphaTextures.push(glhelper.createTexture(simulationSize, simulationSize, glhelper.gl.RG32F, glhelper.gl.RG, glhelper.gl.FLOAT, alphas[i]));
+
+        // alpha derivative textures
+        if (this.derivativeTextures != []) {
+            for (let texture of this.derivativeTextures)
+                glhelper.gl.deleteTexture(texture);
+            this.derivativeTextures = [];
+        }
+        for (let i = 0; i < lenses.length; i++) {
+            var derivatives = new Float32Array(derivativeHeaps[i].buffer, derivativeHeaps[i].byteOffset, simulationSize * simulationSize * 3);
+            this.derivativeTextures.push(glhelper.createTexture(simulationSize, simulationSize, glhelper.gl.RGB32F, glhelper.gl.RGB, glhelper.gl.FLOAT, derivatives));
+            Module._free(derivativeBuffers[i]);
+        }
+
+        // destroy c++ lens pointers
+        for (let lens of lenses)
+            destroyLens(lens);
     }
 
     this.setRedshiftValue(redshift);
@@ -221,13 +236,16 @@ function Simulation(canvasID, size, angularSize) {
         this.uniforms["u_size"] = new Uniform(Uniform.FLOAT, this.size);
         this.uniforms["u_angularSize"] = new Uniform(Uniform.FLOAT, this.angularSize);
         this.uniforms["u_num_source_planes"] = new Uniform(Uniform.FLOAT, 0);
+        this.uniforms["u_num_lenses"] = new Uniform(Uniform.FLOAT, 0);
         this.uniforms["u_enabled"] = new Uniform(Uniform.FLOAT, 0);
         this.uniforms["u_D_d"] = new Uniform(Uniform.FLOAT, this.lensPlane.D_d);
-        this.uniforms["u_lensStrength"] = new Uniform(Uniform.FLOAT, 1);
     }
 
     this.destroy = function() {
-        this.gl.deleteTexture(this.lensPlane.alphaTexture);
+        for (let texture of this.lensPlane.alphaTextures)
+            this.gl.deleteTexture(texture);
+        for (let texture of this.lensPlane.derivativeTextures)
+            this.gl.deleteTexture(texture);
         this.gl.deleteFramebuffer(this.framebuffer);
         this.gl.deleteTexture(this.fbtexture);
         this.gl.deleteProgram(this.simulationShader.program);
@@ -283,7 +301,7 @@ function Simulation(canvasID, size, angularSize) {
 
     this.update = function() {
         this.updateUniforms();
-        var textures = { u_alphaTexture: this.lensPlane.alphaTexture, u_qTextures: this.lensPlane.QTextures };
+        var textures = { u_alphaTextures: this.lensPlane.alphaTextures, u_derivativeTextures: this.lensPlane.derivativeTextures };
         this.helper.runProgram(this.simulationShader.program, textures, this.uniforms, this.framebuffer);
         this.helper.runProgram(this.displayShader.program, {u_texture: this.fbtexture}, {}, null);
     }
@@ -291,8 +309,14 @@ function Simulation(canvasID, size, angularSize) {
     this.updateUniforms = function() {
         this.uniforms["u_size"].value = this.size;
         this.uniforms["u_num_source_planes"].value = this.sourcePlanes.length;
+        this.uniforms["u_num_lenses"].value = this.lensPlane.lenses.length;
         this.uniforms["u_D_d"].value = this.lensPlane.D_d;
-        this.uniforms["u_lensStrength"].value = 1;
+        for (let i = 0; i < this.lensPlane.lenses.length; i++) {
+            let lens = this.lensPlane.lenses[i];
+            this.uniforms["u_lenses["+i+"].strength"] = new Uniform(Uniform.FLOAT, lens.strength);
+            this.uniforms["u_lenses["+i+"].position"] = new Uniform(Uniform.VEC2, [lens.translationX, lens.translationY]);
+            this.uniforms["u_lenses["+i+"].angle"] = new Uniform(Uniform.FLOAT, lens.angle*ANGLE_DEGREE);
+        }
         for (let i = 0; i < this.sourcePlanes.length; i++) {
             let sourcePlane = this.sourcePlanes[i];
             this.uniforms["u_source_planes["+i+"].origin"] = new Uniform(Uniform.VEC2, [sourcePlane.x, sourcePlane.y]);

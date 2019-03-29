@@ -56,7 +56,8 @@ grale::CompositeLensParams *EMSCRIPTEN_KEEPALIVE createCompositeLensParams() {
     return new grale::CompositeLensParams();
 }
 
-void EMSCRIPTEN_KEEPALIVE addLensToComposite(grale::CompositeLensParams *params, double factor, double pos_x, double pos_y, double angle, const grale::GravitationalLens *lens) {
+void EMSCRIPTEN_KEEPALIVE addLensToComposite(
+        grale::CompositeLensParams *params, double factor, double pos_x, double pos_y, double angle, const grale::GravitationalLens *lens) {
     params->addLens(factor, grale::Vector2Dd(pos_x, pos_y), angle, *lens);
 }
 
@@ -89,7 +90,16 @@ void EMSCRIPTEN_KEEPALIVE destroyLens(grale::GravitationalLens *lens) {
 double EMSCRIPTEN_KEEPALIVE calculateLensQ(grale::GravitationalLens *lens, double theta_x, double theta_y, double D_s, double D_ds) {
     double axx, ayy, axy;
     lens->getAlphaVectorDerivatives(grale::Vector2Dd(theta_x, theta_y), axx, ayy, axy);
-    return (1 - (D_ds/D_s) * axx) * (1 - (D_ds/D_s) * ayy) - axy * axy;
+    return (1 - (D_ds/D_s) * axx) * (1 - (D_ds/D_s) * ayy) - (D_ds/D_s) * axy * (D_ds/D_s) * axy;
+}
+
+void EMSCRIPTEN_KEEPALIVE calculateAlphaVectorDerivatives(
+        grale::GravitationalLens *lens, double theta_x, double theta_y, float *buffer, int offset) {
+    double axx, ayy, axy;
+    lens->getAlphaVectorDerivatives(grale::Vector2Dd(theta_x, theta_y), axx, ayy, axy);
+    buffer[  offset  ] = axx;
+    buffer[offset + 1] = ayy;
+    buffer[offset + 2] = axy;
 }
 
 }

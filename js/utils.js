@@ -243,17 +243,18 @@ function GLHelper(gl) {
 }
 
 /** Emscripten calls */
-var createPlummerLens           = Module.cwrap("createPlummerLens", "number", ["number", "number", "number"]);
-var createSISLens               = Module.cwrap("createSISLens", "number", ["number", "number"]);
-var createNSISLens              = Module.cwrap("createNSISLens", "number", ["number", "number", "number"]);
-var createSIELens               = Module.cwrap("createSIELens", "number", ["number", "number", "number"]);
-var createNSIELens              = Module.cwrap("createNSIELens", "number", ["number", "number", "number", "number"]);
-// var createMassSheetLens = Module.cwrap("createMassSheetLens", "number", ["number", "number"]);
-var createCompositeLensParams   = Module.cwrap("createCompositeLensParams", "number", [null]);
-var addLensToComposite          = Module.cwrap("addLensToComposite", null, ["number", "number", "number", "number", "number", "number"]);
-var createCompositeLens         = Module.cwrap("createCompositeLens", "number", ["number", "number"]);
-var calculateLensAlphaX         = Module.cwrap("calculateLensAlphaX", "number", ["number", "number", "number", "number", "number"]);
-var calculateLensAlphaY         = Module.cwrap("calculateLensAlphaY", "number", ["number", "number", "number", "number", "number"]);
-var destroyLensParams           = Module.cwrap("destroyLensParams", null, ["number"]);
-var destroyLens                 = Module.cwrap("destroyLens", null, ["number"]);
-var calculateLensQ              = Module.cwrap("calculateLensQ", "number", ["number", "number", "number", "number", "number"]);
+var createPlummerLens               = Module.cwrap("createPlummerLens", "number", ["number", "number", "number"]);
+var createSISLens                   = Module.cwrap("createSISLens", "number", ["number", "number"]);
+var createNSISLens                  = Module.cwrap("createNSISLens", "number", ["number", "number", "number"]);
+var createSIELens                   = Module.cwrap("createSIELens", "number", ["number", "number", "number"]);
+var createNSIELens                  = Module.cwrap("createNSIELens", "number", ["number", "number", "number", "number"]);
+// var createMassSheetLens             = Module.cwrap("createMassSheetLens", "number", ["number", "number"]);
+// var createCompositeLensParams       = Module.cwrap("createCompositeLensParams", "number", [null]);
+// var addLensToComposite              = Module.cwrap("addLensToComposite", null, ["number", "number", "number", "number", "number", "number"]);
+// var createCompositeLens             = Module.cwrap("createCompositeLens", "number", ["number", "number"]);
+var calculateLensAlphaX             = Module.cwrap("calculateLensAlphaX", "number", ["number", "number", "number", "number", "number"]);
+var calculateLensAlphaY             = Module.cwrap("calculateLensAlphaY", "number", ["number", "number", "number", "number", "number"]);
+// var destroyLensParams               = Module.cwrap("destroyLensParams", null, ["number"]);
+var destroyLens                     = Module.cwrap("destroyLens", null, ["number"]);
+// var calculateLensQ                  = Module.cwrap("calculateLensQ", "number", ["number", "number", "number", "number", "number"]);
+var calculateAlphaVectorDerivatives = Module.cwrap("calculateAlphaVectorDerivatives", null, ["number", "number", "number", "number", "number"]);

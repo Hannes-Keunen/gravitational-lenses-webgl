@@ -7,5 +7,6 @@ emcc \
     -s WASM=1 \
     -s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]' \
     -s ASSERTIONS=2 \
+    -s ALLOW_MEMORY_GROWTH=1 \
     -o bin/grale.js \
     -I/usr/local/include
