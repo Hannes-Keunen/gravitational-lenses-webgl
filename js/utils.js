@@ -157,6 +157,23 @@ function GLHelper(gl) {
         return texture;
     }
 
+    /** Creates a new texture array. */
+    this.createTextureArray = function(width, height, count, internalFormat = gl.RGBA, format = gl.RGBA, type = gl.UNSIGNED_BYTE, data = []) {
+        var texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+        gl.texStorage3D(gl.TEXTURE_2D_ARRAY, 1, internalFormat, width, height, count);
+
+        for (let i = 0; i < data.length; i++)
+            gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, i, width, height, 1, format, type, data[i]);
+
+        return texture;
+    }
+
     /** Creates a new framebuffer with the given texture as it's color attachment. */
     this.createFramebuffer = function(texture) {
         var fb = gl.createFramebuffer();
@@ -197,6 +214,11 @@ function GLHelper(gl) {
                     i++;
                 }
                 gl.uniform1iv(uniformLocation, textureUnits);
+            } else if ("target" in texture && "texture" in texture) {
+                gl.activeTexture(gl.TEXTURE0 + i);
+                gl.bindTexture(texture.target, texture.texture);
+                gl.uniform1i(uniformLocation, i);
+                i++;
             } else {
                 gl.activeTexture(gl.TEXTURE0 + i);
                 gl.bindTexture(gl.TEXTURE_2D, textures[key]);

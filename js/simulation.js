@@ -121,9 +121,9 @@ GravitationalLens.GetModelName = function(model) {
 function LensPlane(redshift) {
     this.redshift;                  /** The redshift value */
     this.D_d;                       /** The angular diameter distance, in Mpc */
-    this.lenses = [];               /** A list of GravitationalLenses */
-    this.alphaTextures = [];        /** An array of WebGL textures where alphas will be stored */
-    this.derivativeTextures = [];   /** An array of WebGL textures where alpha derivatives will be stored */
+    this.lenses = [];               /** A list of GravitationalLenses */ 
+    this.alphaTextureArray;         /** A WebGL texture array where alphas will be stored */
+    this.derivativeTextureArray;    /** A WebGL texture array where alpha derivatives will be stored */
 
     this.setRedshiftValue = function(redshift) {
         this.redshift = redshift;
@@ -140,7 +140,7 @@ function LensPlane(redshift) {
         return index;
     }
 
-    this.calculateAlphaVectors = function(simulationSize, angularSize, glhelper, sourcePlanes) {
+    this.calculateAlphaVectors = function(simulationSize, angularSize, glhelper) {
         var lenses = [];
         var alphas = [];
         var derivativeBuffers = [];
@@ -178,26 +178,22 @@ function LensPlane(redshift) {
             }
         }
 
-        // alpha textures
-        if (this.alphaTextures != []) {
-            for (let texture of this.alphaTextures)
-                glhelper.gl.deleteTexture(texture);
-            this.alphaTextures = [];
-        }
-        for (let i = 0; i < this.lenses.length; i++)
-            this.alphaTextures.push(glhelper.createTexture(simulationSize, simulationSize, glhelper.gl.RG32F, glhelper.gl.RG, glhelper.gl.FLOAT, alphas[i]));
+        // alpha texture array
+        if (this.alphaTextureArray != undefined)
+            glhelper.gl.deleteTexture(this.alphaTextureArray);
+        this.alphaTextureArray = glhelper.createTextureArray(
+            simulationSize, simulationSize, this.lenses.length, glhelper.gl.RG32F, glhelper.gl.RG, glhelper.gl.FLOAT, alphas);
 
-        // alpha derivative textures
-        if (this.derivativeTextures != []) {
-            for (let texture of this.derivativeTextures)
-                glhelper.gl.deleteTexture(texture);
-            this.derivativeTextures = [];
-        }
-        for (let i = 0; i < lenses.length; i++) {
-            var derivatives = new Float32Array(derivativeHeaps[i].buffer, derivativeHeaps[i].byteOffset, simulationSize * simulationSize * 3);
-            this.derivativeTextures.push(glhelper.createTexture(simulationSize, simulationSize, glhelper.gl.RGB32F, glhelper.gl.RGB, glhelper.gl.FLOAT, derivatives));
-            Module._free(derivativeBuffers[i]);
-        }
+        // alpha derivative texture array
+        if (this.derivativeTextureArray != undefined)
+            glhelper.gl.deleteTexture(this.derivativeTextureArray);
+        var derivatives = [];
+        for (let heap of derivativeHeaps)
+            derivatives.push(new Float32Array(heap.buffer, heap.byteOffset, simulationSize * simulationSize * 3));
+        this.derivativeTextureArray = glhelper.createTextureArray(
+            simulationSize, simulationSize, this.lenses.length, glhelper.gl.RGB32F, glhelper.gl.RGB, glhelper.gl.FLOAT, derivatives);
+        for (let buffer of derivativeBuffers)
+            Module._free(buffer);
 
         // destroy c++ lens pointers
         for (let lens of lenses)
@@ -247,10 +243,8 @@ function Simulation(canvasID, size, angularSize) {
     }
 
     this.destroy = function() {
-        for (let texture of this.lensPlane.alphaTextures)
-            this.gl.deleteTexture(texture);
-        for (let texture of this.lensPlane.derivativeTextures)
-            this.gl.deleteTexture(texture);
+        this.gl.deleteTexture(this.lensPlane.alphaTextureArray);
+        this.gl.deleteTexture(this.lensPlane.derivativeTextureArray);
         this.gl.deleteFramebuffer(this.framebuffer);
         this.gl.deleteTexture(this.fbtexture);
         this.gl.deleteProgram(this.simulationShader.program);
@@ -306,7 +300,13 @@ function Simulation(canvasID, size, angularSize) {
 
     this.update = function() {
         this.updateUniforms();
-        var textures = { u_alphaTextures: this.lensPlane.alphaTextures, u_derivativeTextures: this.lensPlane.derivativeTextures };
+        var textures = {
+            u_alphaTextureArray: {
+                target: this.gl.TEXTURE_2D_ARRAY,
+                texture: this.lensPlane.alphaTextureArray },
+            u_derivativeTextureArray: {
+                target: this.gl.TEXTURE_2D_ARRAY,
+                texture: this.lensPlane.derivativeTextureArray }};
         this.helper.runProgram(this.simulationShader.program, textures, this.uniforms, this.framebuffer);
         this.helper.runProgram(this.displayShader.program, {u_texture: this.fbtexture}, {}, null);
     }
