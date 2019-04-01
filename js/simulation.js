@@ -63,6 +63,7 @@ function GravitationalLens(model) {
             case GravitationalLens.SIE:     return createSIELens(D_d*DIST_MPC, this.params.velocityDispersion*1000, this.params.ellipticity);
             case GravitationalLens.NSIE:    return createNSIELens(D_d*DIST_MPC, this.params.velocityDispersion*1000, this.params.ellipticity, this.params.angularCoreRadius);
             // case GravitationalLens.MASS_SHEET: var lens = createMassSheetLens(this.D_d*DIST_MPC, this.params.density); break;
+            case GravitationalLens.IMPORT:  return loadLensFromFile(this.params.file);
             default: throw new Error("Invalid lens model: " + model);
         }
     }
@@ -75,6 +76,7 @@ function GravitationalLens(model) {
             case GravitationalLens.SIE:     return "velocityDispersion" in params && "ellipticity" in params;
             case GravitationalLens.NSIE:    return "velocityDispersion" in params && "ellipticity" in params && "angularCoreRadius" in params;
             // case GravitationalLens.MASS_SHEET: return "density" in params;
+            case GravitationalLens.IMPORT:  return "file" in params;
             default: throw new Error("Invalid lens model: " + model);
         }
     }
@@ -90,6 +92,7 @@ GravitationalLens.NSIS = 3;
 GravitationalLens.SIE = 4;
 GravitationalLens.NSIE = 5;
 GravitationalLens.MASS_SHEET = 6;
+GravitationalLens.IMPORT = 7;
 
 GravitationalLens.GetDefaultParams = function(model) {
     switch (model) {
@@ -98,6 +101,7 @@ GravitationalLens.GetDefaultParams = function(model) {
         case GravitationalLens.NSIS:    return { velocityDispersion: 150, angularCoreRadius: 5 };
         case GravitationalLens.SIE:     return { velocityDispersion: 150, ellipticity: 0.5 };
         case GravitationalLens.NSIE:    return { velocityDispersion: 150, ellipticity: 0.5, angularCoreRadius: 5 };
+        case GravitationalLens.IMPORT:  return { file: "" };
         default: throw new Error("Invalid lens model: " + model);
     }
 }
@@ -109,6 +113,7 @@ GravitationalLens.GetModelName = function(model) {
         case GravitationalLens.NSIS:    return "NSIS";
         case GravitationalLens.SIE:     return "SIE";
         case GravitationalLens.NSIE:    return "NSIE";
+        case GravitationalLens.IMPORT:  return "From file";
         default: throw new Error("Invalid lens model: " + model);
     }
 }

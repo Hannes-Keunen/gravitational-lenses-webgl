@@ -293,6 +293,34 @@ NSIEControls.CreateView = function() {
             </div>`
 }
 
+function LensImportControls(view, params) {
+    this.fileInput = view.querySelector("#import_file_input");
+
+    this.params = params;
+
+    this.setCallbacks = function() {
+        this.fileInput.addEventListener("change", this.fileCallback.bind(this));
+    }
+
+    this.fileCallback = function() {
+        if (this.fileInput.files.length != 1) return;
+        var file = this.fileInput.files[0];
+        var reader = new FileReader;
+        reader.onloadend = function() {
+            var data = new Uint8Array(reader.result);
+            Module.FS_createDataFile("/", file.name, data, true, true, true);
+            this.params.file = file.name;
+        }.bind(this);
+        reader.readAsArrayBuffer(this.fileInput.files[0]);
+    }
+
+    this.setCallbacks();
+}
+
+LensImportControls.CreateView = function() {
+    return `file: <input type="file" id="import_file_input">`;
+}
+
 /** Controls for paramaters specific to the mass sheet model */
 function MassSheetControls(view, params) {
     this.densitySlider  = view.querySelector("#masssheet_density_slider");
@@ -364,6 +392,10 @@ function LensControls(view, lens, simulation, removeCallback) {
         case GravitationalLens.NSIE:
             this.modelParamsContainer.innerHTML = NSIEControls.CreateView();
             this.parameterControls = new NSIEControls(this.modelParamsContainer, this.lens.params);
+            break;
+        case GravitationalLens.IMPORT:
+            this.modelParamsContainer.innerHTML = LensImportControls.CreateView();
+            this.parameterControls = new LensImportControls(this.modelParamsContainer, this.lens.params);
             break;
         default: throw new Error("Unknown lens model: " + this.lens.model);
     }

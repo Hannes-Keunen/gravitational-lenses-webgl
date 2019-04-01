@@ -1,3 +1,6 @@
+#include <iostream>
+#include <string>
+
 #include <grale/compositelens.h>
 #include <grale/plummerlens.h>
 #include <grale/masssheetlens.h>
@@ -64,6 +67,16 @@ void EMSCRIPTEN_KEEPALIVE addLensToComposite(
 grale::CompositeLens *EMSCRIPTEN_KEEPALIVE createCompositeLens(double D_d, const grale::CompositeLensParams *params) {
     grale::CompositeLens *lens = new grale::CompositeLens;
     lens->init(D_d, params);
+    return lens;
+}
+
+grale::GravitationalLens *EMSCRIPTEN_KEEPALIVE loadLensFromFile(const char *filename) {
+    std::string error;
+    grale::GravitationalLens *lens;
+    if (!grale::GravitationalLens::load(filename, &lens, error)) {
+        std::cout << error << std::endl;
+        return nullptr;
+    }
     return lens;
 }
 

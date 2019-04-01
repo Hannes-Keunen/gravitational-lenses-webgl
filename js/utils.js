@@ -252,6 +252,7 @@ var createNSIELens                  = Module.cwrap("createNSIELens", "number", [
 // var createCompositeLensParams       = Module.cwrap("createCompositeLensParams", "number", [null]);
 // var addLensToComposite              = Module.cwrap("addLensToComposite", null, ["number", "number", "number", "number", "number", "number"]);
 // var createCompositeLens             = Module.cwrap("createCompositeLens", "number", ["number", "number"]);
+var loadLensFromFile                = Module.cwrap("loadLensFromFile", "number", ["string"]);
 var calculateLensAlphaX             = Module.cwrap("calculateLensAlphaX", "number", ["number", "number", "number", "number", "number"]);
 var calculateLensAlphaY             = Module.cwrap("calculateLensAlphaY", "number", ["number", "number", "number", "number", "number"]);
 // var destroyLensParams               = Module.cwrap("destroyLensParams", null, ["number"]);
