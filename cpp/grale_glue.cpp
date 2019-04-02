@@ -55,6 +55,32 @@ grale::MassSheetLens *EMSCRIPTEN_KEEPALIVE createMassSheetLens(double D_d, doubl
     return lens;
 }
 
+grale::GravitationalLens *EMSCRIPTEN_KEEPALIVE loadLensFromFile(const char *filename) {
+    std::string error;
+    grale::GravitationalLens *lens;
+    if (!grale::GravitationalLens::load(filename, &lens, error)) {
+        std::cout << error << std::endl;
+        return nullptr;
+    }
+    return lens;
+}
+
+void EMSCRIPTEN_KEEPALIVE calculateAlphaVectors(grale::GravitationalLens *lens, double theta_x, double theta_y, float *buffer, int offset) {
+    grale::Vector2Dd alpha;
+    lens->getAlphaVector(grale::Vector2Dd(theta_x, theta_y), &alpha);
+    buffer[  offset  ] = alpha.getX() / grale::ANGLE_ARCSEC;
+    buffer[offset + 1] = alpha.getY() / grale::ANGLE_ARCSEC;
+}
+
+void EMSCRIPTEN_KEEPALIVE calculateAlphaVectorDerivatives(
+        grale::GravitationalLens *lens, double theta_x, double theta_y, float *buffer, int offset) {
+    double axx, ayy, axy;
+    lens->getAlphaVectorDerivatives(grale::Vector2Dd(theta_x, theta_y), axx, ayy, axy);
+    buffer[  offset  ] = axx;
+    buffer[offset + 1] = ayy;
+    buffer[offset + 2] = axy;
+}
+
 grale::CompositeLensParams *EMSCRIPTEN_KEEPALIVE createCompositeLensParams() {
     return new grale::CompositeLensParams();
 }
@@ -70,49 +96,12 @@ grale::CompositeLens *EMSCRIPTEN_KEEPALIVE createCompositeLens(double D_d, const
     return lens;
 }
 
-grale::GravitationalLens *EMSCRIPTEN_KEEPALIVE loadLensFromFile(const char *filename) {
-    std::string error;
-    grale::GravitationalLens *lens;
-    if (!grale::GravitationalLens::load(filename, &lens, error)) {
-        std::cout << error << std::endl;
-        return nullptr;
-    }
-    return lens;
-}
-
-float EMSCRIPTEN_KEEPALIVE calculateLensAlphaX(const grale::GravitationalLens *lens, double theta_x, double theta_y) {
-    grale::Vector2Dd alpha;
-    lens->getAlphaVector(grale::Vector2Dd(theta_x, theta_y), &alpha);
-    return alpha.getX();
-}
-
-float EMSCRIPTEN_KEEPALIVE calculateLensAlphaY(grale::GravitationalLens *lens, double theta_x, double theta_y) {
-    grale::Vector2Dd alpha;
-    lens->getAlphaVector(grale::Vector2Dd(theta_x, theta_y), &alpha);
-    return alpha.getY();
-}
-
 void EMSCRIPTEN_KEEPALIVE destroyLensParams(grale::GravitationalLensParams *params) {
     delete params;
 }
 
 void EMSCRIPTEN_KEEPALIVE destroyLens(grale::GravitationalLens *lens) {
     delete lens;
-}
-
-double EMSCRIPTEN_KEEPALIVE calculateLensQ(grale::GravitationalLens *lens, double theta_x, double theta_y, double D_s, double D_ds) {
-    double axx, ayy, axy;
-    lens->getAlphaVectorDerivatives(grale::Vector2Dd(theta_x, theta_y), axx, ayy, axy);
-    return (1 - (D_ds/D_s) * axx) * (1 - (D_ds/D_s) * ayy) - (D_ds/D_s) * axy * (D_ds/D_s) * axy;
-}
-
-void EMSCRIPTEN_KEEPALIVE calculateAlphaVectorDerivatives(
-        grale::GravitationalLens *lens, double theta_x, double theta_y, float *buffer, int offset) {
-    double axx, ayy, axy;
-    lens->getAlphaVectorDerivatives(grale::Vector2Dd(theta_x, theta_y), axx, ayy, axy);
-    buffer[  offset  ] = axx;
-    buffer[offset + 1] = ayy;
-    buffer[offset + 2] = axy;
 }
 
 }

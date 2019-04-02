@@ -140,64 +140,56 @@ function LensPlane(redshift) {
         return index;
     }
 
-    this.calculateAlphaVectors = function(simulationSize, angularSize, glhelper) {
-        var lenses = [];
-        var alphas = [];
-        var derivativeBuffers = [];
-        var derivativeHeaps = [];
-        for (let lens of this.lenses) {
-            // c++ pointer for access to GRALE functions
-            lenses.push(lens.createHandle(this.D_d));
+    this.createAlphaTextures = function(simulationSize, angularSize, glhelper) {
+        if (this.alphaTextureArray != undefined)
+            this.alphaTextureArray.destroy();
+        this.alphaTextureArray = new TextureArray(
+            glhelper.gl, this.lenses.length, simulationSize, simulationSize, glhelper.gl.RG32F, glhelper.gl.RG, glhelper.gl.FLOAT);
 
-            // Storage for deflection angles for each lens
-            alphas.push(new Float32Array(simulationSize * simulationSize * 2));
+        var alphaBuffer = new EmscriptenBuffer(simulationSize * simulationSize * 2);
 
-            // Storage for alpha derivatives
-            var bufferSize = simulationSize * simulationSize * 3 * Float32Array.BYTES_PER_ELEMENT;
-            var buffer = Module._malloc(bufferSize);
-            derivativeBuffers.push(buffer);
-            derivativeHeaps.push(new Uint8Array(Module.HEAPU8.buffer, buffer, bufferSize));
-        }
-
-        for (let y = 0; y < simulationSize; y++) {
-            for (let x = 0; x < simulationSize; x++) {
-                var theta_x = (x - simulationSize / 2) / simulationSize * angularSize;
-                var theta_y = (y - simulationSize / 2) / simulationSize * angularSize;
-                for (let i = 0; i < this.lenses.length; i++) {
-                    // alpha vector
-                    var alpha_x = calculateLensAlphaX(lenses[i], theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCSEC;
-                    var alpha_y = calculateLensAlphaY(lenses[i], theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC) / ANGLE_ARCSEC;
-                    alphas[i][  (x + simulationSize * y) * 2  ] = alpha_x;
-                    alphas[i][(x + simulationSize * y) * 2 + 1] = alpha_y;
-
-                    // alpha vector derivatives
-                    calculateAlphaVectorDerivatives(
-                        lenses[i], theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC,
-                        derivativeHeaps[i].byteOffset, (x + simulationSize * y) * 3);
+        for (let i = 0; i < this.lenses.length; i++) {
+            let lens = this.lenses[i].createHandle(this.D_d);
+            for (let y = 0; y < simulationSize; y++) {
+                let theta_y = (y - simulationSize / 2) / simulationSize * angularSize;
+                for (let x = 0; x < simulationSize; x++) {
+                    let theta_x = (x - simulationSize / 2) / simulationSize * angularSize;
+                    calculateAlphaVectors(
+                        lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC,
+                        alphaBuffer.asPointer(), (x + simulationSize * y) * 2);
                 }
             }
+            destroyLens(lens);
+            this.alphaTextureArray.update(i, alphaBuffer.asFloat32Array());
         }
 
-        // alpha texture array
-        if (this.alphaTextureArray != undefined)
-            glhelper.gl.deleteTexture(this.alphaTextureArray);
-        this.alphaTextureArray = glhelper.createTextureArray(
-            simulationSize, simulationSize, this.lenses.length, glhelper.gl.RG32F, glhelper.gl.RG, glhelper.gl.FLOAT, alphas);
+        alphaBuffer.destroy();
+    }
 
-        // alpha derivative texture array
+    this.createAlphaDerivativeTextures = function(simulationSize, angularSize, glhelper) {
         if (this.derivativeTextureArray != undefined)
-            glhelper.gl.deleteTexture(this.derivativeTextureArray);
-        var derivatives = [];
-        for (let heap of derivativeHeaps)
-            derivatives.push(new Float32Array(heap.buffer, heap.byteOffset, simulationSize * simulationSize * 3));
-        this.derivativeTextureArray = glhelper.createTextureArray(
-            simulationSize, simulationSize, this.lenses.length, glhelper.gl.RGB32F, glhelper.gl.RGB, glhelper.gl.FLOAT, derivatives);
-        for (let buffer of derivativeBuffers)
-            Module._free(buffer);
+            this.derivativeTextureArray.destroy();
+        this.derivativeTextureArray = new TextureArray(
+            glhelper.gl, this.lenses.length, simulationSize, simulationSize, glhelper.gl.RGB32F, glhelper.gl.RGB, glhelper.gl.FLOAT);
 
-        // destroy c++ lens pointers
-        for (let lens of lenses)
+        var derivativeBuffer = new EmscriptenBuffer(simulationSize * simulationSize * 3);
+
+        for (let i = 0; i < this.lenses.length; i++) {
+            let lens = this.lenses[i].createHandle(this.D_d);
+            for (let y = 0; y < simulationSize; y++) {
+                let theta_y = (y - simulationSize / 2) / simulationSize * angularSize;
+                for (let x = 0; x < simulationSize; x++) {
+                    let theta_x = (x - simulationSize / 2) / simulationSize * angularSize;
+                    calculateAlphaVectorDerivatives(
+                        lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC,
+                        derivativeBuffer.asPointer(), (x + simulationSize * y) * 3);
+                }
+            }
             destroyLens(lens);
+            this.derivativeTextureArray.update(i, derivativeBuffer.asFloat32Array());
+        }
+
+        derivativeBuffer.destroy();
     }
 
     this.setRedshiftValue(redshift);
@@ -243,8 +235,8 @@ function Simulation(canvasID, size, angularSize) {
     }
 
     this.destroy = function() {
-        this.gl.deleteTexture(this.lensPlane.alphaTextureArray);
-        this.gl.deleteTexture(this.lensPlane.derivativeTextureArray);
+        this.lensPlane.alphaTextureArray.destroy();
+        this.lensPlane.derivativeTextureArray.destroy();
         this.gl.deleteFramebuffer(this.framebuffer);
         this.gl.deleteTexture(this.fbtexture);
         this.gl.deleteProgram(this.simulationShader.program);
@@ -279,7 +271,8 @@ function Simulation(canvasID, size, angularSize) {
         this.uniforms["u_angularSize"].value = this.angularSize;
         for (let sourcePlane of this.sourcePlanes)
             sourcePlane.setRedshiftValue(sourcePlane.redshift, this.lensPlane.redshift);
-        this.lensPlane.calculateAlphaVectors(this.size, this.angularSize, this.helper, this.sourcePlanes);
+        this.lensPlane.createAlphaTextures(this.size, this.angularSize, this.helper);
+        this.lensPlane.createAlphaDerivativeTextures(this.size, this.angularSize, this.helper);
         this.enableLensEffect();
         this.started = true;
     }
@@ -301,12 +294,8 @@ function Simulation(canvasID, size, angularSize) {
     this.update = function() {
         this.updateUniforms();
         var textures = {
-            u_alphaTextureArray: {
-                target: this.gl.TEXTURE_2D_ARRAY,
-                texture: this.lensPlane.alphaTextureArray },
-            u_derivativeTextureArray: {
-                target: this.gl.TEXTURE_2D_ARRAY,
-                texture: this.lensPlane.derivativeTextureArray }};
+            u_alphaTextureArray: this.lensPlane.alphaTextureArray,
+            u_derivativeTextureArray: this.lensPlane.derivativeTextureArray };
         this.helper.runProgram(this.simulationShader.program, textures, this.uniforms, this.framebuffer);
         this.helper.runProgram(this.displayShader.program, {u_texture: this.fbtexture}, {}, null);
     }

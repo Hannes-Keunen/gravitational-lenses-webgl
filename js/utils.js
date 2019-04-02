@@ -91,6 +91,43 @@ function Uniform(type, value) {
 Uniform.FLOAT = 1;
 Uniform.VEC2 = 2;
 
+/** Helper for WebGL texture arrays. */
+function TextureArray(gl, length, width, height, internalFormat, format, type, data = []) {
+    this.target = gl.TEXTURE_2D_ARRAY;
+    this.texture;
+
+    this.length = length;
+    this.width = width;
+    this.height = height;
+    this.internalFormat = internalFormat;
+    this.format = format;
+    this.type = type;
+
+    this.constructor = function() {
+        this.texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.texture);
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+        gl.texStorage3D(gl.TEXTURE_2D_ARRAY, 1, this.internalFormat, this.width, this.height, this.length);
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, null)
+    }
+
+    this.update = function(index, data) {
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.texture);
+        gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, index, width, height, 1, format, type, data)
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
+    }
+
+    this.destroy = function() {
+        gl.deleteTexture(this.texture);
+    }
+
+    this.constructor();
+}
+
 /** Contains helper methods for common WebGL operations. */
 function GLHelper(gl) {
     this.gl = gl;
@@ -264,20 +301,48 @@ function GLHelper(gl) {
     this.constructor();
 }
 
+/**
+ * A buffer of float values which can be passed to emscripten calls.
+ * @note For some reason segfaults occur when multiple buffers are used at the same time.
+ */
+function EmscriptenBuffer(size) {
+    this.size = size;
+    this.heap;
+    this.buffer;
+
+    this.constructor = function() {
+        var bufferSize = this.size * Float32Array.BYTES_PER_ELEMENT;
+        this.buffer = Module._malloc(bufferSize);
+        this.heap = new Uint8Array(Module.HEAPU8.buffer, this.buffer, bufferSize);
+    }
+
+    this.destroy = function() {
+        Module._free(this.buffer);
+    }
+
+    this.asPointer = function() {
+        return this.heap.byteOffset;
+    }
+
+    this.asFloat32Array = function() {
+        return new Float32Array(this.heap.buffer, this.heap.byteOffset, this.size)
+    }
+
+    this.constructor();
+}
+
 /** Emscripten calls */
 var createPlummerLens               = Module.cwrap("createPlummerLens", "number", ["number", "number", "number"]);
 var createSISLens                   = Module.cwrap("createSISLens", "number", ["number", "number"]);
 var createNSISLens                  = Module.cwrap("createNSISLens", "number", ["number", "number", "number"]);
 var createSIELens                   = Module.cwrap("createSIELens", "number", ["number", "number", "number"]);
 var createNSIELens                  = Module.cwrap("createNSIELens", "number", ["number", "number", "number", "number"]);
+var loadLensFromFile                = Module.cwrap("loadLensFromFile", "number", ["string"]);
+var calculateAlphaVectors           = Module.cwrap("calculateAlphaVectors", null, ["number", "number", "number", "number", "number"]);
+var calculateAlphaVectorDerivatives = Module.cwrap("calculateAlphaVectorDerivatives", null, ["number", "number", "number", "number", "number"]);
 // var createMassSheetLens             = Module.cwrap("createMassSheetLens", "number", ["number", "number"]);
 // var createCompositeLensParams       = Module.cwrap("createCompositeLensParams", "number", [null]);
 // var addLensToComposite              = Module.cwrap("addLensToComposite", null, ["number", "number", "number", "number", "number", "number"]);
 // var createCompositeLens             = Module.cwrap("createCompositeLens", "number", ["number", "number"]);
-var loadLensFromFile                = Module.cwrap("loadLensFromFile", "number", ["string"]);
-var calculateLensAlphaX             = Module.cwrap("calculateLensAlphaX", "number", ["number", "number", "number", "number", "number"]);
-var calculateLensAlphaY             = Module.cwrap("calculateLensAlphaY", "number", ["number", "number", "number", "number", "number"]);
 // var destroyLensParams               = Module.cwrap("destroyLensParams", null, ["number"]);
 var destroyLens                     = Module.cwrap("destroyLens", null, ["number"]);
-// var calculateLensQ                  = Module.cwrap("calculateLensQ", "number", ["number", "number", "number", "number", "number"]);
-var calculateAlphaVectorDerivatives = Module.cwrap("calculateAlphaVectorDerivatives", null, ["number", "number", "number", "number", "number"]);
