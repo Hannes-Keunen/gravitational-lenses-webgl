@@ -1,3 +1,5 @@
 .vscode
 bin/grale.js
-bin/grale.wasm
+*.wasm
+*.wast
+*.wasm.map
