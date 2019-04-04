@@ -622,3 +622,41 @@ function Controls(sim) {
     this.setCallbacks();
     this.initDefaults();
 }
+
+function SourcePlaneMouseControls(simulation) {
+    this.simulation     = simulation;
+    this.canvas         = simulation.canvas;
+    this.currentTarget  = null;
+
+    this.setCallbacks = function() {
+        this.canvas.addEventListener("mousedown", this.onMouseDown.bind(this));
+        this.canvas.addEventListener("mouseup",   this.onMouseUp.bind(this));
+        this.canvas.addEventListener("mousemove", this.onMouseMove.bind(this));
+    }
+
+    this.onMouseDown = function(event) {
+        var x = (event.offsetX - this.simulation.size / 2) / this.simulation.size * this.simulation.angularSize * 2.0;
+        var y = -(event.offsetY - this.simulation.size / 2) / this.simulation.size * this.simulation.angularSize * 2.0;
+
+        this.currentTarget = null;
+        for (let sourcePlane of this.simulation.sourcePlanes) {
+            if (sourcePlane.contains(x, y)) {
+                this.currentTarget = sourcePlane;
+                break;
+            }
+        }
+    }
+
+    this.onMouseUp = function(event) {
+        this.currentTarget = null;
+    }
+
+    this.onMouseMove = function(event) {
+        if (this.currentTarget != null) {
+            this.currentTarget.x = (event.offsetX - this.simulation.size / 2) / this.simulation.size * this.simulation.angularSize * 2.0;
+            this.currentTarget.y = -(event.offsetY - this.simulation.size / 2) / this.simulation.size * this.simulation.angularSize * 2.0;
+        }
+    }
+
+    this.setCallbacks();
+}

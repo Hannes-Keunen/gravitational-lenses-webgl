@@ -28,6 +28,13 @@ function SourcePlane(redshift, lensRedshift, x, y, radius) {
         this.D_ds = calculateAngularDiameterDistance(lensRedshift, redshift);
     }
 
+    this.contains = function(x, y) {
+        var dx = x - this.x;
+        var dy = y - this.y;
+        console.log(Math.sqrt(dx*dx + dy*dy));
+        return Math.sqrt(dx*dx + dy*dy) < this.radius;
+    }
+
     this.constructor();
 }
 
@@ -198,6 +205,7 @@ function LensPlane(redshift) {
 function Simulation(canvasID, size, angularSize) {
     this.size = size;               /** Simulation size in pixels */
     this.angularSize = angularSize; /** Simulation size in arcseconds */
+    this.changedAngularSize = angularSize;
     this.canvas;                    /** HtmlCanvasObject */
     this.gl;                        /** WebGL2RenderingContext */
     this.helper;                    /** GLHelper */
@@ -254,7 +262,7 @@ function Simulation(canvasID, size, angularSize) {
     }
 
     this.setAngularSize = function(angularSize) {
-        this.angularSize = angularSize;
+        this.changedAngularSize = angularSize;
     }
 
     this.enableLensEffect = function() {
@@ -266,7 +274,7 @@ function Simulation(canvasID, size, angularSize) {
     }
 
     this.start = function() {
-        this.uniforms["u_angularSize"].value = this.angularSize;
+        this.angularSize = this.changedAngularSize;
         for (let sourcePlane of this.sourcePlanes)
             sourcePlane.setRedshiftValue(sourcePlane.redshift, this.lensPlane.redshift);
         this.lensPlane.createAlphaTextures(this.size, this.angularSize, this.helper);
@@ -301,6 +309,7 @@ function Simulation(canvasID, size, angularSize) {
     this.updateUniforms = function() {
         this.uniforms["u_size"].value = this.size;
         this.uniforms["u_num_source_planes"].value = this.sourcePlanes.length;
+        this.uniforms["u_angularSize"].value = this.angularSize;
         this.uniforms["u_num_lenses"].value = this.lensPlane.lenses.length;
         this.uniforms["u_D_d"].value = this.lensPlane.D_d;
         for (let i = 0; i < this.lensPlane.lenses.length; i++) {
