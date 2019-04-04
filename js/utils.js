@@ -62,6 +62,10 @@ function distance(x1, y1, x2, y2) {
     return Math.sqrt(dx * dx + dy * dy);
 }
 
+function toAngular(x, actualSize, angularRadius) {
+    return (x - actualSize / 2) / actualSize * angularRadius * 2;
+}
+
 /** Loads multiple resources. */
 function loadResources(names, callback) {
     var complete = false;

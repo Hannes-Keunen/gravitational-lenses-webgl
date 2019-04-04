@@ -140,7 +140,7 @@ function LensPlane(redshift) {
         return index;
     }
 
-    this.createAlphaTextures = function(simulationSize, angularSize, glhelper) {
+    this.createAlphaTextures = function(simulationSize, angularRadius, glhelper) {
         if (this.alphaTextureArray != undefined)
             this.alphaTextureArray.destroy();
         this.alphaTextureArray = new TextureArray(
@@ -151,11 +151,11 @@ function LensPlane(redshift) {
         for (let i = 0; i < this.lenses.length; i++) {
             let lens = this.lenses[i].createHandle(this.D_d);
             for (let y = 0; y < simulationSize; y++) {
-                let theta_y = (y - simulationSize / 2) / simulationSize * angularSize;
+                let thetaY = toAngular(y, simulationSize, angularRadius);
                 for (let x = 0; x < simulationSize; x++) {
-                    let theta_x = (x - simulationSize / 2) / simulationSize * angularSize;
+                    let thetaX = toAngular(x, simulationSize, angularRadius);
                     calculateAlphaVectors(
-                        lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC,
+                        lens, thetaX*ANGLE_ARCSEC, thetaY*ANGLE_ARCSEC,
                         alphaBuffer.asPointer(), (x + simulationSize * y) * 2);
                 }
             }
@@ -166,7 +166,7 @@ function LensPlane(redshift) {
         alphaBuffer.destroy();
     }
 
-    this.createAlphaDerivativeTextures = function(simulationSize, angularSize, glhelper) {
+    this.createAlphaDerivativeTextures = function(simulationSize, angularRadius, glhelper) {
         if (this.derivativeTextureArray != undefined)
             this.derivativeTextureArray.destroy();
         this.derivativeTextureArray = new TextureArray(
@@ -177,11 +177,11 @@ function LensPlane(redshift) {
         for (let i = 0; i < this.lenses.length; i++) {
             let lens = this.lenses[i].createHandle(this.D_d);
             for (let y = 0; y < simulationSize; y++) {
-                let theta_y = (y - simulationSize / 2) / simulationSize * angularSize;
+                let thetaY = toAngular(y, simulationSize, angularRadius);
                 for (let x = 0; x < simulationSize; x++) {
-                    let theta_x = (x - simulationSize / 2) / simulationSize * angularSize;
+                    let thetaX = toAngular(x, simulationSize, angularRadius);
                     calculateAlphaVectorDerivatives(
-                        lens, theta_x*ANGLE_ARCSEC, theta_y*ANGLE_ARCSEC,
+                        lens, thetaX*ANGLE_ARCSEC, thetaY*ANGLE_ARCSEC,
                         derivativeBuffer.asPointer(), (x + simulationSize * y) * 3);
                 }
             }
@@ -195,10 +195,10 @@ function LensPlane(redshift) {
     this.setRedshiftValue(redshift);
 }
 
-function Simulation(canvasID, size, angularSize) {
+function Simulation(canvasID, size, angularRadius) {
     this.size = size;               /** Simulation size in pixels */
-    this.angularSize = angularSize; /** Simulation size in arcseconds */
-    this.changedAngularSize = angularSize;
+    this.angularRadius = angularRadius; /** Simulation size in arcseconds */
+    this.changedAngularRadius = angularRadius;
     this.canvas;                    /** HtmlCanvasObject */
     this.gl;                        /** WebGL2RenderingContext */
     this.helper;                    /** GLHelper */
@@ -227,7 +227,7 @@ function Simulation(canvasID, size, angularSize) {
         this.lensPlane = new LensPlane(0.5);
 
         this.uniforms["u_size"] = new Uniform(Uniform.FLOAT, this.size);
-        this.uniforms["u_angularSize"] = new Uniform(Uniform.FLOAT, this.angularSize);
+        this.uniforms["u_angularRadius"] = new Uniform(Uniform.FLOAT, this.angularRadius);
         this.uniforms["u_num_source_planes"] = new Uniform(Uniform.FLOAT, 0);
         this.uniforms["u_num_lenses"] = new Uniform(Uniform.FLOAT, 0);
         this.uniforms["u_enabled"] = new Uniform(Uniform.FLOAT, 0);
@@ -254,8 +254,8 @@ function Simulation(canvasID, size, angularSize) {
         // TODO: this doesn't work as expected
     }
 
-    this.setAngularSize = function(angularSize) {
-        this.changedAngularSize = angularSize;
+    this.setAngularRadius = function(angularRadius) {
+        this.changedAngularRadius = angularRadius;
     }
 
     this.enableLensEffect = function() {
@@ -267,11 +267,11 @@ function Simulation(canvasID, size, angularSize) {
     }
 
     this.start = function() {
-        this.angularSize = this.changedAngularSize;
+        this.angularRadius = this.changedAngularRadius;
         for (let sourcePlane of this.sourcePlanes)
             sourcePlane.setRedshiftValue(sourcePlane.redshift, this.lensPlane.redshift);
-        this.lensPlane.createAlphaTextures(this.size, this.angularSize, this.helper);
-        this.lensPlane.createAlphaDerivativeTextures(this.size, this.angularSize, this.helper);
+        this.lensPlane.createAlphaTextures(this.size, this.angularRadius, this.helper);
+        this.lensPlane.createAlphaDerivativeTextures(this.size, this.angularRadius, this.helper);
         this.enableLensEffect();
         this.started = true;
     }
@@ -302,7 +302,7 @@ function Simulation(canvasID, size, angularSize) {
     this.updateUniforms = function() {
         this.uniforms["u_size"].value = this.size;
         this.uniforms["u_num_source_planes"].value = this.sourcePlanes.length;
-        this.uniforms["u_angularSize"].value = this.angularSize;
+        this.uniforms["u_angularRadius"].value = this.angularRadius;
         this.uniforms["u_num_lenses"].value = this.lensPlane.lenses.length;
         this.uniforms["u_D_d"].value = this.lensPlane.D_d;
         for (let i = 0; i < this.lensPlane.lenses.length; i++) {

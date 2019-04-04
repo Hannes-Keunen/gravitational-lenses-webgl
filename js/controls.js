@@ -461,8 +461,8 @@ function LensControls(view, lens, simulation, removeCallback) {
 /** Controls for the whole simulation. */
 function Controls(sim) {
     this.sizePicker             = document.getElementById("size_picker");
-    this.angularSizeSlider      = document.getElementById("angularsize_slider");
-    this.angularSizeDisplay     = document.getElementById("angularsize_value");
+    this.angularRadiusSlider    = document.getElementById("angularsize_slider");
+    this.angularRadiusDisplay   = document.getElementById("angularsize_value");
     this.sourcePlaneList        = document.getElementById("source_plane_list");
 
     this.lensRedshiftSlider     = document.getElementById("lens_redshift_slider");
@@ -486,7 +486,7 @@ function Controls(sim) {
 
     this.setCallbacks = function() {
         this.sizePicker             .addEventListener("change", this.simulationSizeCallback.bind(this));
-        this.angularSizeSlider      .addEventListener("input",  this.angularSizeCallback.bind(this));
+        this.angularRadiusSlider    .addEventListener("input",  this.angularRadiusCallback.bind(this));
         this.lensRedshiftSlider     .addEventListener("input",  this.lensRedshiftCallback.bind(this));
         this.disableButton          .addEventListener("click",  this.disableCallback.bind(this));
         this.addLensButton          .addEventListener("click",  this.addLensCallback.bind(this));
@@ -501,8 +501,8 @@ function Controls(sim) {
         this.lensRedshiftDisplay.innerHTML  = this.simulation.lensPlane.redshift;
         this.lensRedshiftSlider.value       = this.simulation.lensPlane.redshift * 100;
         this.simulationSize                 = this.sizePicker.value;
-        this.angularSizeDisplay.innerHTML   = this.simulation.angularSize;
-        this.angularSizeSlider.value        = this.simulation.angularSize;
+        this.angularRadiusDisplay.innerHTML = this.simulation.angularRadius;
+        this.angularRadiusSlider.value      = this.simulation.angularRadius;
     }
 
     this.resizeCallback = function() {
@@ -518,9 +518,9 @@ function Controls(sim) {
             this.simulation.setSize(parseInt(this.simulationSize));
     }
 
-    this.angularSizeCallback = function() {
-        this.simulation.setAngularSize(this.angularSizeSlider.value);
-        this.angularSizeDisplay.innerHTML = this.angularSizeSlider.value;
+    this.angularRadiusCallback = function() {
+        this.simulation.setAngularRadius(this.angularRadiusSlider.value);
+        this.angularRadiusDisplay.innerHTML = this.angularRadiusSlider.value;
     }
 
     this.lensRedshiftCallback = function() {
@@ -656,8 +656,8 @@ function SourcePlaneMouseControls(simulation) {
     }
 
     this.onMouseDown = function(event) {
-        var x = (event.offsetX - this.simulation.size / 2) / this.simulation.size * this.simulation.angularSize * 2.0;
-        var y = -(event.offsetY - this.simulation.size / 2) / this.simulation.size * this.simulation.angularSize * 2.0;
+        var x = toAngular(event.offsetX, this.simulation.size, this.simulation.angularRadius);
+        var y = -toAngular(event.offsetY, this.simulation.size, this.simulation.angularRadius);
 
         this.currentTarget = null;
         for (let i = 0; i < this.simulation.sourcePlanes.length; i++) {
@@ -678,10 +678,8 @@ function SourcePlaneMouseControls(simulation) {
 
     this.onMouseMove = function(event) {
         if (this.currentTarget != null) {
-            this.currentTarget.x =
-                (event.offsetX - this.simulation.size / 2) / this.simulation.size * this.simulation.angularSize * 2.0 - this.moveOffsetX;
-            this.currentTarget.y =
-                -(event.offsetY - this.simulation.size / 2) / this.simulation.size * this.simulation.angularSize * 2.0 - this.moveOffsetY;
+            this.currentTarget.x = toAngular(event.offsetX, this.simulation.size, this.simulation.angularRadius) - this.moveOffsetX;
+            this.currentTarget.y = -toAngular(event.offsetY, this.simulation.size, this.simulation.angularRadius) - this.moveOffsetY;
             if (this.moveCallback != null)
                 this.moveCallback(this.targetIndex);
         }

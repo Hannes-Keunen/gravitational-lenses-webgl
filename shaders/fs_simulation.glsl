@@ -29,7 +29,7 @@ uniform highp sampler2DArray u_derivativeTextureArray;  //< Texture array contai
 uniform float u_num_source_planes;
 
 uniform float u_size;               //< Canvas size, in pixels
-uniform float u_angularSize;        //< Angular size of the simulation, in arcseconds
+uniform float u_angularRadius;      //< Angular size of the simulation, in arcseconds
 uniform float u_D_d;                //< Lens distance, in Mpc
 uniform float u_enabled;            //< Whether the lens effect is enabled or not
 
@@ -40,7 +40,7 @@ out vec4 o_fragmentColor;
 
 /** Converts an angle to texture coordinates */
 vec2 angleToTexcoords(vec2 angle) {
-    return angle / u_angularSize / 2.0 + vec2(0.5, 0.5);
+    return angle / u_angularRadius / 2.0 + vec2(0.5, 0.5);
 }
 
 /** Checks if the point is on the i'th source plane. */
@@ -138,6 +138,6 @@ vec4 traceTheta(vec2 theta) {
 }
 
 void main() {
-    vec2 theta = v_pos * u_angularSize;
+    vec2 theta = v_pos * u_angularRadius;
     o_fragmentColor = traceTheta(theta);
 }
