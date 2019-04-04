@@ -55,10 +55,11 @@ function calculateAngularDiameterDistance(z1, z2) {
     return result;
 }
 
+/** Calculates the distance between two points. */
 function distance(x1, y1, x2, y2) {
     var dx = x1 - x2;
     var dy = y1 - y2;
-    return Math.sqrt(dx * dx )
+    return Math.sqrt(dx * dx + dy * dy);
 }
 
 /** Loads multiple resources. */
