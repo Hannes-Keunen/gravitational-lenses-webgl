@@ -6,6 +6,7 @@ window.onload = function() {
     sim = new Simulation("canvas", Math.min(window.innerHeight, window.innerWidth), 30);
     controls = new Controls(sim);
     mouseControls = new SourcePlaneMouseControls(sim);
+    mouseControls.setMoveCallback(controls.sourcePlaneMoveCallback.bind(controls));
     (function render() {
         if (sim.isReady())
             sim.update();

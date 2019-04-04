@@ -54,8 +54,17 @@ function SourcePlaneControls(view, sourcePlane, simulation, removeCallback) {
     }
 
     this.deleteCallback = function() {
-        var index = this.simulation.removeSourcePlane(sourcePlane);
+        var index = this.simulation.removeSourcePlane(this.sourcePlane);
         this.removeCallback(index);
+    }
+
+    this.notifyChanges = function() {
+        this.xDisplay.innerHTML = this.sourcePlane.x.toFixed(1);
+        this.xSlider.value = this.sourcePlane.x * 10;
+        this.yDisplay.innerHTML = this.sourcePlane.y.toFixed(1);
+        this.ySlider.value = this.sourcePlane.y * 10;
+        this.radiusDisplay.innerHTML = this.sourcePlane.radius;
+        this.radiusSlider.value = this.sourcePlane.radius * 10;
     }
 
     this.setCallbacks();
@@ -610,6 +619,10 @@ function Controls(sim) {
     this.sourcePlaneRemoveCallback = function(index) {
         this.sourcePlaneList.removeChild(this.sourcePlaneList.childNodes[index]);
         this.sourcePlaneControls.splice(index, 1);
+    }
+
+    this.sourcePlaneMoveCallback = function(index) {
+        this.sourcePlaneControls[index].notifyChanges();
     }
 
     this.emscriptenCallback = function() {
