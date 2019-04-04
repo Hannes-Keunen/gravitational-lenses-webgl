@@ -128,6 +128,52 @@ function TextureArray(gl, length, width, height, internalFormat, format, type, d
     this.constructor();
 }
 
+/** A simple framebuffer with a color texture. */
+function Framebuffer(gl, width, height) {
+    this.colorAttachment;
+    this.framebuffer;
+
+    this.constructor = function() {
+        this.colorAttachment = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.colorAttachment);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+        this.framebuffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.colorAttachment, 0);
+
+        if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) != gl.FRAMEBUFFER_COMPLETE)
+            throw new Error("Framebuffer is not complete, return value is " + status);
+
+        gl.bindTexture(gl.TEXTURE_2D, null);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+
+    this.destroy = function() {
+        gl.deleteTexture(this.colorAttachment);
+        gl.deleteFramebuffer(this.framebuffer);
+    }
+
+    this.readPixel = function(x, y) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+        var pixels = new Uint8Array(4);
+        gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        return {
+            r: pixels[0],
+            g: pixels[1],
+            b: pixels[2],
+            a: pixels[3],
+        }
+    }
+
+    this.constructor();
+}
+
 /** Contains helper methods for common WebGL operations. */
 function GLHelper(gl) {
     this.gl = gl;
@@ -211,25 +257,11 @@ function GLHelper(gl) {
         return texture;
     }
 
-    /** Creates a new framebuffer with the given texture as it's color attachment. */
-    this.createFramebuffer = function(texture) {
-        var fb = gl.createFramebuffer();
-        gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
-
-        var status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
-        if (status != gl.FRAMEBUFFER_COMPLETE)
-            throw new Error("Framebuffer is not complete, return value is " + status);
-        
-        return fb;
-    }
-
     /** 
      * Runs a shader program and stores it's output in the given framebuffer,
      * or the default framebuffer if the framebuffer is null.
      */
-    this.runProgram = function(program, textures, uniforms, framebuffer) {  
+    this.runProgram = function(program, textures, uniforms, framebuffer) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
         gl.clearColor(0.0, 0.0, 0.0, 1.0);

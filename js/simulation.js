@@ -204,7 +204,7 @@ function Simulation(canvasID, size, angularSize) {
     this.simulationShader;          /** WebGLProgram */
     this.displayShader;             /** WebGLProgram */
     this.fbtexture;                 /** WebGLTexture */
-    this.framebuffer;               /** WebGLFramebuffer */
+    this.framebuffer;               /** Framebuffer */
     this.uniforms = {};
     this.started = false;
 
@@ -213,16 +213,15 @@ function Simulation(canvasID, size, angularSize) {
 
     this.constructor = function() {
         this.canvas = document.getElementById(canvasID);
-        this.canvas.width = size;
-        this.canvas.height = size;
+        this.canvas.width = this.size;
+        this.canvas.height = this.size;
         this.gl = canvas.getContext("webgl2");
         this.helper = new GLHelper(this.gl);
         loadResources(
             ["shaders/vs_simulation.glsl", "shaders/fs_simulation.glsl",
              "shaders/vs_display.glsl", "shaders/fs_display.glsl"],
             this.loadShaders.bind(this));
-        this.fbtexture = this.helper.createTexture(size, size);
-        this.framebuffer = this.helper.createFramebuffer(this.fbtexture);
+        this.framebuffer = new Framebuffer(this.gl, this.size, this.size);
 
         this.lensPlane = new LensPlane(0.5);
 
@@ -237,8 +236,7 @@ function Simulation(canvasID, size, angularSize) {
     this.destroy = function() {
         this.lensPlane.alphaTextureArray.destroy();
         this.lensPlane.derivativeTextureArray.destroy();
-        this.gl.deleteFramebuffer(this.framebuffer);
-        this.gl.deleteTexture(this.fbtexture);
+        this.framebuffer.destroy();
         this.gl.deleteProgram(this.simulationShader.program);
         this.gl.deleteProgram(this.displayShader.program);
         this.gl.deleteShader(this.simulationShader.vertexShader);
@@ -296,8 +294,8 @@ function Simulation(canvasID, size, angularSize) {
         var textures = {
             u_alphaTextureArray: this.lensPlane.alphaTextureArray,
             u_derivativeTextureArray: this.lensPlane.derivativeTextureArray };
-        this.helper.runProgram(this.simulationShader.program, textures, this.uniforms, this.framebuffer);
-        this.helper.runProgram(this.displayShader.program, {u_texture: this.fbtexture}, {}, null);
+        this.helper.runProgram(this.simulationShader.program, textures, this.uniforms, this.framebuffer.framebuffer);
+        this.helper.runProgram(this.displayShader.program, {u_texture: this.framebuffer.colorAttachment}, {}, null);
     }
 
     this.updateUniforms = function() {
