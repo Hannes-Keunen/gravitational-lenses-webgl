@@ -627,6 +627,14 @@ function SourcePlaneMouseControls(simulation) {
     this.simulation     = simulation;
     this.canvas         = simulation.canvas;
     this.currentTarget  = null;
+    this.targetIndex    = 0;
+    this.moveCallback   = null;
+    this.moveOffsetX    = 0;
+    this.moveOffsetY    = 0;
+
+    this.setMoveCallback = function(callback) {
+        this.moveCallback = callback;
+    }
 
     this.setCallbacks = function() {
         this.canvas.addEventListener("mousedown", this.onMouseDown.bind(this));
@@ -639,9 +647,13 @@ function SourcePlaneMouseControls(simulation) {
         var y = -(event.offsetY - this.simulation.size / 2) / this.simulation.size * this.simulation.angularSize * 2.0;
 
         this.currentTarget = null;
-        for (let sourcePlane of this.simulation.sourcePlanes) {
-            if (sourcePlane.contains(x, y)) {
+        for (let i = 0; i < this.simulation.sourcePlanes.length; i++) {
+            let sourcePlane = this.simulation.sourcePlanes[i];
+            if (distance(x, y, sourcePlane.x, sourcePlane.y) < sourcePlane.radius) {
                 this.currentTarget = sourcePlane;
+                this.targetIndex = i;
+                this.moveOffsetX = x - sourcePlane.x;
+                this.moveOffsetY = y - sourcePlane.y;
                 break;
             }
         }
@@ -653,8 +665,12 @@ function SourcePlaneMouseControls(simulation) {
 
     this.onMouseMove = function(event) {
         if (this.currentTarget != null) {
-            this.currentTarget.x = (event.offsetX - this.simulation.size / 2) / this.simulation.size * this.simulation.angularSize * 2.0;
-            this.currentTarget.y = -(event.offsetY - this.simulation.size / 2) / this.simulation.size * this.simulation.angularSize * 2.0;
+            this.currentTarget.x =
+                (event.offsetX - this.simulation.size / 2) / this.simulation.size * this.simulation.angularSize * 2.0 - this.moveOffsetX;
+            this.currentTarget.y =
+                -(event.offsetY - this.simulation.size / 2) / this.simulation.size * this.simulation.angularSize * 2.0 - this.moveOffsetY;
+            if (this.moveCallback != null)
+                this.moveCallback(this.targetIndex);
         }
     }
 

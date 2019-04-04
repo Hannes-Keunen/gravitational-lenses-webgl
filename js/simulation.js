@@ -28,13 +28,6 @@ function SourcePlane(redshift, lensRedshift, x, y, radius) {
         this.D_ds = calculateAngularDiameterDistance(lensRedshift, redshift);
     }
 
-    this.contains = function(x, y) {
-        var dx = x - this.x;
-        var dy = y - this.y;
-        console.log(Math.sqrt(dx*dx + dy*dy));
-        return Math.sqrt(dx*dx + dy*dy) < this.radius;
-    }
-
     this.constructor();
 }
 
