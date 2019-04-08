@@ -469,6 +469,7 @@ function Controls(sim) {
     this.lensRedshiftDisplay    = document.getElementById("lens_redshift_value");
     this.disableButton          = document.getElementById("disable_lenses");
     this.startSimulationButton  = document.getElementById("start_simulation");
+    this.exportButton           = document.getElementById("export");
 
     this.lensModelPicker        = document.getElementById("lens_model_picker");
     this.addLensButton          = document.getElementById("add_lens");
@@ -492,6 +493,7 @@ function Controls(sim) {
         this.addLensButton          .addEventListener("click",  this.addLensCallback.bind(this));
         this.addSourcePlaneButton   .addEventListener("click",  this.addSourcePlane.bind(this));
         this.startSimulationButton  .addEventListener("click",  this.startSimulationCallback.bind(this));
+        this.exportButton           .addEventListener("click",  this.exportCallback.bind(this));
 
         window.onresize = this.resizeCallback.bind(this);
         Module.onRuntimeInitialized = this.emscriptenCallback.bind(this);
@@ -542,6 +544,10 @@ function Controls(sim) {
 
     this.startSimulationCallback = function() {
         sim.start();
+    }
+
+    this.exportCallback = function() {
+        sim.lensPlane.export();
     }
 
     this.addLensCallback = function() {
@@ -628,6 +634,7 @@ function Controls(sim) {
     this.emscriptenCallback = function() {
         this.startSimulationButton.disabled = false;
         this.disableButton.disabled = false;
+        this.exportButton.disabled = false;
         this.lensesEnabled = true;
         this.simulation.enableLensEffect();
     }

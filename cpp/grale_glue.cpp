@@ -65,6 +65,10 @@ grale::GravitationalLens *EMSCRIPTEN_KEEPALIVE loadLensFromFile(const char *file
     return lens;
 }
 
+void EMSCRIPTEN_KEEPALIVE saveLensToFile(grale::GravitationalLens *lens, const char *filename) {
+    lens->save(filename);
+}
+
 void EMSCRIPTEN_KEEPALIVE calculateAlphaVectors(grale::GravitationalLens *lens, double theta_x, double theta_y, float *buffer, int offset) {
     grale::Vector2Dd alpha;
     lens->getAlphaVector(grale::Vector2Dd(theta_x, theta_y), &alpha);

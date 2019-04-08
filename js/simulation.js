@@ -118,6 +118,32 @@ GravitationalLens.GetModelName = function(model) {
     }
 }
 
+/** Contains a GRALE CompositeLens */
+function CompositeLens(lenses, D_d) {
+    this.lenses = [];
+    this.params;
+    this.lens;
+
+    this.constructor = function() {
+        this.params = createCompositeLensParams();
+        for (let lens of lenses) {
+            let handle = lens.createHandle(D_d);
+            addLensToComposite(this.params, lens.strength, lens.translationX, lens.translationY, lens.angle, handle);
+            this.lenses.push(handle);
+        }
+        this.lens = createCompositeLens(D_d, this.params);
+    }
+
+    this.destroy = function() {
+        destroyLens(this.lens);
+        destroyLensParams(this.params);
+        for (let lens of this.lenses)
+            destroyLens(lens);
+    }
+
+    this.constructor();
+}
+
 function LensPlane(redshift) {
     this.redshift;                  /** The redshift value */
     this.D_d;                       /** The angular diameter distance, in Mpc */
@@ -190,6 +216,25 @@ function LensPlane(redshift) {
         }
 
         derivativeBuffer.destroy();
+    }
+
+    this.export = function() {
+        const filename = "lens.bin";
+        if (this.lenses.length == 0) {
+            return;
+        } else if (this.lenses.length == 1) {
+            let lens = this.lenses[0].createHandle(this.D_d);
+            saveLensToFile(lens, filename);
+            destroyLens(lens);
+        } else {
+            let lens = new CompositeLens(this.lenses, this.D_d);
+            saveLensToFile(lens.lens, filename);
+            lens.destroy();
+        }
+
+        var data = FS.readFile(filename);
+        downloadData(data, filename, "application/x-gravitationallens");
+        FS.unlink(filename);
     }
 
     this.setRedshiftValue(redshift);

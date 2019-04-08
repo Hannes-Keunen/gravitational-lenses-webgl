@@ -93,6 +93,23 @@ function loadResources(names, callback) {
     });
 }
 
+function downloadData(data, filename, type) {
+    var blob = new Blob([data], { type: type });
+    var url = window.URL.createObjectURL(blob);
+
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.style = "display: none";
+    a.click();
+    a.remove();
+
+    setTimeout(function() {
+        return window.URL.revokeObjectURL(url);
+    }, 1000);
+}
+
 /** Helper for shader uniforms. */
 function Uniform(type, value) {
     this.type = type;
@@ -381,11 +398,12 @@ var createNSISLens                  = Module.cwrap("createNSISLens", "number", [
 var createSIELens                   = Module.cwrap("createSIELens", "number", ["number", "number", "number"]);
 var createNSIELens                  = Module.cwrap("createNSIELens", "number", ["number", "number", "number", "number"]);
 var loadLensFromFile                = Module.cwrap("loadLensFromFile", "number", ["string"]);
+var saveLensToFile                  = Module.cwrap("saveLensToFile", null, ["number", "string"]);
 var calculateAlphaVectors           = Module.cwrap("calculateAlphaVectors", null, ["number", "number", "number", "number", "number"]);
 var calculateAlphaVectorDerivatives = Module.cwrap("calculateAlphaVectorDerivatives", null, ["number", "number", "number", "number", "number"]);
 // var createMassSheetLens             = Module.cwrap("createMassSheetLens", "number", ["number", "number"]);
-// var createCompositeLensParams       = Module.cwrap("createCompositeLensParams", "number", [null]);
-// var addLensToComposite              = Module.cwrap("addLensToComposite", null, ["number", "number", "number", "number", "number", "number"]);
-// var createCompositeLens             = Module.cwrap("createCompositeLens", "number", ["number", "number"]);
-// var destroyLensParams               = Module.cwrap("destroyLensParams", null, ["number"]);
+var createCompositeLensParams       = Module.cwrap("createCompositeLensParams", "number", [null]);
+var addLensToComposite              = Module.cwrap("addLensToComposite", null, ["number", "number", "number", "number", "number", "number"]);
+var createCompositeLens             = Module.cwrap("createCompositeLens", "number", ["number", "number"]);
+var destroyLensParams               = Module.cwrap("destroyLensParams", null, ["number"]);
 var destroyLens                     = Module.cwrap("destroyLens", null, ["number"]);
