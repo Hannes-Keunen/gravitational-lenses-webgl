@@ -261,7 +261,13 @@ function Simulation(canvasID, size, angularRadius) {
         this.canvas = document.getElementById(canvasID);
         this.canvas.width = this.size;
         this.canvas.height = this.size;
-        this.gl = canvas.getContext("webgl2");
+        this.gl = canvas.getContext("webgl2-compute");
+        if (this.gl != null) {
+            console.log("webgl2-compute context is available!");
+        } else {
+            console.log("webgl2-compute context is not available; continuing with webgl2.");
+            this.gl = canvas.getContext("webgl2");
+        }
         this.helper = new GLHelper(this.gl);
         loadResources(
             ["shaders/vs_simulation.glsl", "shaders/fs_simulation.glsl",
