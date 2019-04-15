@@ -54,7 +54,7 @@ vec2 transformTheta(vec2 theta, lens theLens) {
                 -theta0.x*sin(theLens.angle) + theta0.y*cos(theLens.angle));
 }
 
-float calculateQ(vec2 theta, float D_ds, float D_s, vec2 offset) {
+vec3 calculateAlphaDerivatives(vec2 theta, vec2 offset) {
     float axx = 0.0;
 	float ayy = 0.0;
 	float axy = 0.0;
@@ -83,7 +83,17 @@ float calculateQ(vec2 theta, float D_ds, float D_s, vec2 offset) {
 		axy += axy1;
 	}
 
-	return (1.0 - (D_ds/D_s) * axx) * (1.0 - (D_ds/D_s) * ayy) - pow((D_ds/D_s) * axy, 2.0);
+    return vec3(axx, ayy, axy);
+}
+
+float calculateQ(vec2 theta, float D_ds, float D_s, vec2 offset) {
+    vec3 derivatives = calculateAlphaDerivatives(theta, offset);
+	return (1.0 - (D_ds/D_s) * derivatives.x) * (1.0 - (D_ds/D_s) * derivatives.y) - pow((D_ds/D_s) * derivatives.z, 2.0);
+}
+
+float calculateDensity(vec2 theta) {
+    vec3 derivatives = calculateAlphaDerivatives(theta, vec2(0.0, 0.0));
+    return (derivatives.x + derivatives.y) / 32.0;
 }
 
 bool isOnCriticalLine(vec2 theta, int i) {
@@ -125,14 +135,17 @@ vec4 traceTheta(vec2 theta) {
         else
             beta = theta;
 
+        float density = calculateDensity(theta);
         if (isOnCriticalLine(theta, i))     // critical line
             return vec4(1.0, 0.0, 0.0, 1.0);
-        else if (isOnCriticalLine(beta, i)) // caustic
-            return vec4(0.0, 0.0, 1.0, 1.0);
+        // else if (isOnCriticalLine(beta, i)) // caustic
+        //     return vec4(0.0, 0.0, 1.0, 1.0);
         else if (isOnSourcePlane(theta, i)) // source plane
             return vec4(0.0, 1.0, 0.0, 1.0);
         else if (isOnSourcePlane(beta, i))  // image plane
             return vec4(1.0, 1.0, 1.0, 1.0);
+        else
+            return vec4(density, density, 0.0, 1.0);
     }
     return vec4(0.0, 0.0, 0.0, 1.0);
 }
