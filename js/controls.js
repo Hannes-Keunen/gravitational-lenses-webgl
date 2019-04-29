@@ -463,6 +463,10 @@ function Controls(sim) {
     this.sizePicker             = document.getElementById("size_picker");
     this.angularRadiusSlider    = document.getElementById("angularsize_slider");
     this.angularRadiusDisplay   = document.getElementById("angularsize_value");
+    this.sourcePlaneToggle      = document.getElementById("source_plane_toggle");
+    this.imagePlaneToggle       = document.getElementById("image_plane_toggle");
+    this.densityToggle          = document.getElementById("density_toggle");
+    this.criticalLineToggle     = document.getElementById("critical_line_toggle");
     this.sourcePlaneList        = document.getElementById("source_plane_list");
 
     this.lensRedshiftSlider     = document.getElementById("lens_redshift_slider");
@@ -482,14 +486,16 @@ function Controls(sim) {
 
     this.simulation             = sim;
     this.simulationSize;
-    this.lensesEnabled          = false;
     this.lensRedshift;
 
     this.setCallbacks = function() {
         this.sizePicker             .addEventListener("change", this.simulationSizeCallback.bind(this));
         this.angularRadiusSlider    .addEventListener("input",  this.angularRadiusCallback.bind(this));
+        this.sourcePlaneToggle      .addEventListener("change", this.sourcePlaneToggleCallback.bind(this));
+        this.imagePlaneToggle       .addEventListener("change", this.imagePlaneToggleCallback.bind(this));
+        this.densityToggle          .addEventListener("change", this.densityToggleCallback.bind(this));
+        this.criticalLineToggle     .addEventListener("change", this.criticalLineToggleCallback.bind(this));
         this.lensRedshiftSlider     .addEventListener("input",  this.lensRedshiftCallback.bind(this));
-        this.disableButton          .addEventListener("click",  this.disableCallback.bind(this));
         this.addLensButton          .addEventListener("click",  this.addLensCallback.bind(this));
         this.addSourcePlaneButton   .addEventListener("click",  this.addSourcePlane.bind(this));
         this.startSimulationButton  .addEventListener("click",  this.startSimulationCallback.bind(this));
@@ -525,21 +531,25 @@ function Controls(sim) {
         this.angularRadiusDisplay.innerHTML = this.angularRadiusSlider.value;
     }
 
+    this.sourcePlaneToggleCallback = function() {
+        this.simulation.showSourcePlane = this.sourcePlaneToggle.checked;
+    }
+
+    this.imagePlaneToggleCallback = function() {
+        this.simulation.showImagePlane = this.imagePlaneToggle.checked;
+    }
+
+    this.densityToggleCallback = function() {
+        this.simulation.showDensity = this.densityToggle.checked;
+    }
+
+    this.criticalLineToggleCallback = function() {
+        this.simulation.showCriticalLines = this.criticalLineToggle.checked;
+    }
+
     this.lensRedshiftCallback = function() {
         this.simulation.lensPlane.setRedshiftValue(this.lensRedshiftSlider.value / 100);
         this.lensRedshiftDisplay.innerHTML = this.lensRedshiftSlider.value / 100;
-    }
-
-    this.disableCallback = function() {
-        if (this.lensesEnabled) {
-            this.simulation.disableLensEffect();
-            this.disableButton.innerHTML = "enable effect";
-            this.lensesEnabled = false;
-        } else {
-            this.simulation.enableLensEffect();
-            this.disableButton.innerHTML = "disable effect";
-            this.lensesEnabled = true;
-        }
     }
 
     this.startSimulationCallback = function() {
@@ -633,10 +643,7 @@ function Controls(sim) {
 
     this.emscriptenCallback = function() {
         this.startSimulationButton.disabled = false;
-        this.disableButton.disabled = false;
         this.exportButton.disabled = false;
-        this.lensesEnabled = true;
-        this.simulation.enableLensEffect();
     }
 
     this.setCallbacks();

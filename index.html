@@ -25,6 +25,10 @@
                 <div class="slider-container">
                     <input type="range" min="10" max="120" id="angularsize_slider">
                 </div>
+                <input type="checkbox" id="source_plane_toggle" checked> Source plane<br>
+                <input type="checkbox" id="image_plane_toggle" checked> Image plane<br>
+                <input type="checkbox" id="density_toggle" checked> Density<br>
+                <input type="checkbox" id="critical_line_toggle" checked> Critical lines<br>
             </div>
             <div class="controls-section">
                 Lens plane:<br>
@@ -32,9 +36,8 @@
                 <div class="slider-container">
                     <input type="range" min="10" max="150" id="lens_redshift_slider">
                 </div>
-                <button id="disable_lenses" class="w-100" disabled>Disable effect</button>
                 <button id="start_simulation" class="w-100" disabled>Start simulation</button>
-                <button id="export" class="w-100" disabled>Export</button>
+                <button id="export" class="w-100" disabled>Export lens plane</button>
             </div>
             <div class="controls-section">
                 Lenses: 

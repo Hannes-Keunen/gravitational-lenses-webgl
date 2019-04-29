@@ -254,6 +254,12 @@ function Simulation(canvasID, size, angularRadius) {
     this.uniforms = {};
     this.started = false;
 
+    /** Toggle flags */
+    this.showSourcePlane    = true;
+    this.showImagePlane     = true;
+    this.showDensity        = true;
+    this.showCriticalLines  = true;
+
     this.lens;                      /** GravitationalLens */
     this.sourcePlanes = [];         /** SourcePlane[] */
 
@@ -283,6 +289,11 @@ function Simulation(canvasID, size, angularRadius) {
         this.uniforms["u_num_lenses"] = new Uniform(Uniform.FLOAT, 0);
         this.uniforms["u_enabled"] = new Uniform(Uniform.FLOAT, 0);
         this.uniforms["u_D_d"] = new Uniform(Uniform.FLOAT, this.lensPlane.D_d);
+
+        this.uniforms["u_show_source_plane"] = new Uniform(Uniform.FLOAT, this.showSourcePlane);
+        this.uniforms["u_show_image_plane"] = new Uniform(Uniform.FLOAT, this.showImagePlane);
+        this.uniforms["u_show_density"] = new Uniform(Uniform.FLOAT, this.showDensity);
+        this.uniforms["u_show_critical_lines"] = new Uniform(Uniform.FLOAT, this.showCriticalLines);
     }
 
     this.destroy = function() {
@@ -309,21 +320,12 @@ function Simulation(canvasID, size, angularRadius) {
         this.changedAngularRadius = angularRadius;
     }
 
-    this.enableLensEffect = function() {
-        this.uniforms["u_enabled"].value = 1;
-    }
-
-    this.disableLensEffect = function() {
-        this.uniforms["u_enabled"].value = 0;
-    }
-
     this.start = function() {
         this.angularRadius = this.changedAngularRadius;
         for (let sourcePlane of this.sourcePlanes)
             sourcePlane.setRedshiftValue(sourcePlane.redshift, this.lensPlane.redshift);
         this.lensPlane.createAlphaTextures(this.size, this.angularRadius, this.helper);
         this.lensPlane.createAlphaDerivativeTextures(this.size, this.angularRadius, this.helper);
-        this.enableLensEffect();
         this.started = true;
     }
 
@@ -356,6 +358,12 @@ function Simulation(canvasID, size, angularRadius) {
         this.uniforms["u_angularRadius"].value = this.angularRadius;
         this.uniforms["u_num_lenses"].value = this.lensPlane.lenses.length;
         this.uniforms["u_D_d"].value = this.lensPlane.D_d;
+
+        this.uniforms["u_show_source_plane"].value = this.showSourcePlane
+        this.uniforms["u_show_image_plane"].value = this.showImagePlane
+        this.uniforms["u_show_density"].value = this.showDensity
+        this.uniforms["u_show_critical_lines"].value = this.showCriticalLines
+
         for (let i = 0; i < this.lensPlane.lenses.length; i++) {
             let lens = this.lensPlane.lenses[i];
             this.uniforms["u_lenses["+i+"].strength"] = new Uniform(Uniform.FLOAT, lens.strength);

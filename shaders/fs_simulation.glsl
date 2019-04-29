@@ -31,7 +31,11 @@ uniform float u_num_source_planes;
 uniform float u_size;               //< Canvas size, in pixels
 uniform float u_angularRadius;      //< Angular size of the simulation, in arcseconds
 uniform float u_D_d;                //< Lens distance, in Mpc
-uniform float u_enabled;            //< Whether the lens effect is enabled or not
+
+uniform float u_show_source_plane;
+uniform float u_show_image_plane;
+uniform float u_show_density;
+uniform float u_show_critical_lines;
 
 in vec2 v_pos;
 in vec2 v_texpos;
@@ -130,21 +134,21 @@ vec4 traceTheta(vec2 theta) {
 
     for (int i = 0; i < int(u_num_source_planes); i++) {
         vec2 beta;
-        if (u_enabled == 1.0 && u_source_planes[i].D_s > u_D_d)
+        if (u_source_planes[i].D_s > u_D_d)
             beta = theta - (u_source_planes[i].D_ds / u_source_planes[i].D_s) * alpha;
         else
             beta = theta;
 
         float density = calculateDensity(theta);
-        if (isOnCriticalLine(theta, i))     // critical line
+        if (u_show_critical_lines == 1.0 && isOnCriticalLine(theta, i))     // critical line
             return vec4(1.0, 0.0, 0.0, 1.0);
-        // else if (isOnCriticalLine(beta, i)) // caustic
+        // else if (isOnCriticalLine(beta, i))                              // caustic (disabled)
         //     return vec4(0.0, 0.0, 1.0, 1.0);
-        else if (isOnSourcePlane(theta, i)) // source plane
+        else if (u_show_source_plane == 1.0 && isOnSourcePlane(theta, i))   // source plane
             return vec4(0.0, 1.0, 0.0, 1.0);
-        else if (isOnSourcePlane(beta, i))  // image plane
+        else if (u_show_image_plane == 1.0 && isOnSourcePlane(beta, i))     // image plane
             return vec4(1.0, 1.0, 1.0, 1.0);
-        else
+        else if (u_show_density == 1.0)                                     // density
             return vec4(density, density, 0.0, 1.0);
     }
     return vec4(0.0, 0.0, 0.0, 1.0);
