@@ -59,9 +59,9 @@ function GravitationalLens(model) {
         switch (this.model) {
             case GravitationalLens.PLUMMER: return createPlummerLens(D_d*DIST_MPC, this.params.mass*MASS_SUN, this.params.angularWidth*ANGLE_ARCSEC);
             case GravitationalLens.SIS:     return createSISLens(D_d*DIST_MPC, this.params.velocityDispersion*1000);
-            case GravitationalLens.NSIS:    return createNSISLens(D_d*DIST_MPC, this.params.velocityDispersion*1000, this.params.angularCoreRadius);
+            case GravitationalLens.NSIS:    return createNSISLens(D_d*DIST_MPC, this.params.velocityDispersion*1000, this.params.angularCoreRadius*ANGLE_ARCSEC);
             case GravitationalLens.SIE:     return createSIELens(D_d*DIST_MPC, this.params.velocityDispersion*1000, this.params.ellipticity);
-            case GravitationalLens.NSIE:    return createNSIELens(D_d*DIST_MPC, this.params.velocityDispersion*1000, this.params.ellipticity, this.params.angularCoreRadius);
+            case GravitationalLens.NSIE:    return createNSIELens(D_d*DIST_MPC, this.params.velocityDispersion*1000, this.params.ellipticity, this.params.angularCoreRadius*ANGLE_ARCSEC);
             // case GravitationalLens.MASS_SHEET: var lens = createMassSheetLens(this.D_d*DIST_MPC, this.params.density); break;
             case GravitationalLens.IMPORT:  return loadLensFromFile(this.params.file);
             default: throw new Error("Invalid lens model: " + model);
@@ -97,10 +97,10 @@ GravitationalLens.IMPORT = 7;
 GravitationalLens.GetDefaultParams = function(model) {
     switch (model) {
         case GravitationalLens.PLUMMER: return { mass: 1e14, angularWidth: 5 };
-        case GravitationalLens.SIS:     return { velocityDispersion: 150 };
-        case GravitationalLens.NSIS:    return { velocityDispersion: 150, angularCoreRadius: 5 };
-        case GravitationalLens.SIE:     return { velocityDispersion: 150, ellipticity: 0.5 };
-        case GravitationalLens.NSIE:    return { velocityDispersion: 150, ellipticity: 0.5, angularCoreRadius: 5 };
+        case GravitationalLens.SIS:     return { velocityDispersion: 250 };
+        case GravitationalLens.NSIS:    return { velocityDispersion: 250, angularCoreRadius: 0.5 };
+        case GravitationalLens.SIE:     return { velocityDispersion: 250, ellipticity: 0.5 };
+        case GravitationalLens.NSIE:    return { velocityDispersion: 250, ellipticity: 0.5, angularCoreRadius: 0.5 };
         case GravitationalLens.IMPORT:  return { file: "" };
         default: throw new Error("Invalid lens model: " + model);
     }
@@ -267,13 +267,7 @@ function Simulation(canvasID, size, angularRadius) {
         this.canvas = document.getElementById(canvasID);
         this.canvas.width = this.size;
         this.canvas.height = this.size;
-        this.gl = canvas.getContext("webgl2-compute");
-        if (this.gl != null) {
-            console.log("webgl2-compute context is available!");
-        } else {
-            console.log("webgl2-compute context is not available; continuing with webgl2.");
-            this.gl = canvas.getContext("webgl2");
-        }
+        this.gl = canvas.getContext("webgl2");
         this.helper = new GLHelper(this.gl);
         loadResources(
             ["shaders/vs_simulation.glsl", "shaders/fs_simulation.glsl",

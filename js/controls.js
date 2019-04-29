@@ -192,7 +192,7 @@ NSISControls.CreateView = function() {
             </div>
             angular core radius: <span id="nsis_angularcoreradius_value"></span>"
             <div class="slider-container">
-                <input type="range" min="1" max="100" id="nsis_angularcoreradius_slider">
+                <input type="range" min="1" max="50" id="nsis_angularcoreradius_slider">
             </div>`
 }
 
@@ -298,7 +298,7 @@ NSIEControls.CreateView = function() {
             </div>
             angular core radius: <span id="nsie_angularcoreradius_value"></span>"
             <div class="slider-container">
-                <input type="range" min=1 max="100" id="nsie_angularcoreradius_slider">
+                <input type="range" min=1 max="50" id="nsie_angularcoreradius_slider">
             </div>`
 }
 
@@ -601,7 +601,7 @@ function Controls(sim) {
 
     this.addSourcePlane = function() {
         // Add a new default source plane to the simulation
-        var sourcePlane = new SourcePlane(1.5, this.lensRedshift, 0, 0, 5);
+        var sourcePlane = new SourcePlane(1.5, this.lensRedshift, 0, 0, 2);
         this.simulation.addSourcePlane(sourcePlane);
 
         // Add controls for the new source plane
@@ -622,7 +622,7 @@ function Controls(sim) {
              </div>
              Radius: <span id="sourceplane_radius_value"></span>"
              <div class="slider-container">
-                <input id="sourceplane_radius_slider" type="range" min="0" max="150">
+                <input id="sourceplane_radius_slider" type="range" min="0" max="100">
              </div>
              <button id="sourceplane_delete">Delete</button>`
         this.sourcePlaneList.appendChild(row);
