@@ -28,7 +28,7 @@ uniform float u_angularRadius;      //< Angular size of the simulation, in arcse
 in vec2 v_pos;
 in vec2 v_texpos;
 
-out vec4 o_fragmentColor;
+out ivec2 o_fragmentColor;
 
 uniform float u_size;
 
@@ -81,7 +81,7 @@ float calculateQ(vec2 theta, float D_ds, float D_s, vec2 offset) {
 }
 
 bool isOnCriticalLine(vec2 theta, int i) {
-    float offset = 0.002;
+    float offset = 0.007;
 
     // use nearby points to check if there is a zero value inbetween
     float right  = calculateQ(theta, u_source_planes[i].D_ds, u_source_planes[i].D_s,  vec2(0, offset));
@@ -113,22 +113,20 @@ vec2 calculateBeta(vec2 theta, vec2 alpha, int i) {
     return theta - (u_source_planes[i].D_ds / u_source_planes[i].D_s) * alpha;
 }
 
-vec2 angleToAbsolutePosition(vec2 angle) {
+ivec2 angleToAbsolutePosition(vec2 angle) {
     vec2 pos = angle / u_angularRadius; // to [-1.0, 1.0]
-    pos.y *= -1.0;                      // invert y
     pos = pos / 2.0 + vec2(0.5, 0.5);   // to [0.0, 1.0]
-    return pos; // * u_size;                // to [0, u_size]
+    return ivec2(int(pos.x * u_size), float(pos.y * u_size));
 }
 
 void main() {
     vec2 theta = v_pos * u_angularRadius;
     vec2 alpha = calculateAlpha(theta);
-    o_fragmentColor = vec4(0.0, 0.0, 0.0, 1.0);
+    o_fragmentColor = ivec2(-1, -1);
     for (int i = 0; i < int(u_num_source_planes); i++) {
         if (isOnCriticalLine(theta, i)) {
             vec2 beta = calculateBeta(theta, alpha, i);
-            // vec2 position = (beta / u_angularRadius) / 2.0 + vec2(1.0, ) * u_size;
-            o_fragmentColor = vec4(angleToAbsolutePosition(beta), 0.0, 1.0);
+            o_fragmentColor = angleToAbsolutePosition(beta);
         }
     }
 }

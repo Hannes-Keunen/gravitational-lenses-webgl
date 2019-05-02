@@ -273,8 +273,7 @@ function Simulation(canvasID, size, angularRadius) {
             ["shaders/vs_simulation.glsl", "shaders/fs_simulation.glsl",
              "shaders/vs_caustics.glsl", "shaders/fs_caustics.glsl"],
             this.loadShaders.bind(this));
-        this.framebuffer = new Framebuffer(this.gl, this.size, this.size);
-        this.causticsFramebuffer = new Framebuffer(this.gl, this.size, this.size);
+        this.causticsFramebuffer = new Framebuffer(this.gl, this.size, this.size, this.gl.RG16I, this.gl.RG_INTEGER, this.gl.SHORT);
 
         this.lensPlane = new LensPlane(0.5);
 
@@ -294,7 +293,6 @@ function Simulation(canvasID, size, angularRadius) {
     this.destroy = function() {
         this.lensPlane.alphaTextureArray.destroy();
         this.lensPlane.derivativeTextureArray.destroy();
-        this.framebuffer.destroy();
         this.causticsFramebuffer.destroy();
         this.gl.deleteProgram(this.simulationShader.program);
         this.gl.deleteProgram(this.causticsShader.program);
@@ -350,15 +348,16 @@ function Simulation(canvasID, size, angularRadius) {
             u_derivativeTextureArray: this.lensPlane.derivativeTextureArray,
         };
         this.helper.runProgram(this.causticsShader, textures, this.uniforms, this.causticsFramebuffer.framebuffer);
-        var pixels = this.causticsFramebuffer.readPixels();
         var width = this.causticsFramebuffer.width;
         var height = this.causticsFramebuffer.height;
+        var pixels = new Int16Array(width * height * 2);
+        this.causticsFramebuffer.readPixels(pixels);
         var data = new Float32Array(width * height);
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                let pos_x = Math.round(pixels[  (y * width + x) * 4  ] / 255.0 * width);
-                let pos_y = Math.round(pixels[(y * width + x) * 4 + 1] / 255.0 * height);
-                if (pos_x != 0 && pos_y != 0)
+                let pos_x = Math.round(pixels[  (y * width + x) * 2  ]);
+                let pos_y = Math.round(pixels[(y * width + x) * 2 + 1]);
+                if (pos_x > 0 && pos_x < width && pos_y > 0 && pos_y < height)
                     data[pos_y * width + pos_x] = 1.0;
             }
         }

@@ -156,12 +156,15 @@ function TextureArray(gl, length, width, height, internalFormat, format, type, d
     this.constructor();
 }
 
-/** A simple framebuffer with a color texture. */
-function Framebuffer(gl, width, height) {
+/** A framebuffer with single color attachment with the specified format and data type. */
+function Framebuffer(gl, width, height, internalFormat = gl.RGBA, format = gl.RGBA, type = gl.UNSIGNED_BYTE) {
     this.colorAttachment;
     this.framebuffer;
     this.width = width;
     this.height = height;
+    this.internalFormat = internalFormat;
+    this.format = format;
+    this.type = type;
 
     this.constructor = function() {
         this.colorAttachment = gl.createTexture();
@@ -170,7 +173,7 @@ function Framebuffer(gl, width, height) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, null);
 
         this.framebuffer = gl.createFramebuffer();
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
@@ -189,12 +192,10 @@ function Framebuffer(gl, width, height) {
         gl.deleteFramebuffer(this.framebuffer);
     }
 
-    this.readPixels = function() {
+    this.readPixels = function(pixels) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
-        var pixels = new Uint8Array(width * height * 4);
-        gl.readPixels(0, 0, this.width, this.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        gl.readPixels(0, 0, this.width, this.height, this.format, this.type, pixels);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        return pixels;
     }
 
     this.constructor();
@@ -291,8 +292,8 @@ function GLHelper(gl) {
     this.runProgram = function(program, textures, uniforms, framebuffer) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
-        gl.clearColor(0.0, 0.0, 0.0, 1.0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
+        // gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        // gl.clear(gl.COLOR_BUFFER_BIT);
 
         gl.useProgram(program.program);
 
