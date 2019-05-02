@@ -2,11 +2,6 @@
 
 precision highp float;
 
-const float PI = 3.1415926535897932384626433832795;
-const float ANGLE_DEGREE = PI / 180.0;
-const float ANGLE_ARCMIN = ANGLE_DEGREE / 60.0;
-const float ANGLE_ARCSEC = ANGLE_ARCMIN / 60.0;
-
 struct lens {
     float strength;
     vec2 position;
@@ -23,34 +18,23 @@ struct source_plane {
 uniform lens u_lenses[16];                              //< Lens parameters
 uniform highp sampler2DArray u_alphaTextureArray;       //< Texture array containing alpha vectors
 uniform highp sampler2DArray u_derivativeTextureArray;  //< Texture array containing alpha derivatives for the critical lines
-uniform highp sampler2D u_causticsTexture;              //< Texture containing positions for caustics
 uniform float u_num_lenses;
 
 uniform source_plane u_source_planes[16];
 uniform float u_num_source_planes;
 
-uniform float u_size;               //< Canvas size, in pixels
 uniform float u_angularRadius;      //< Angular size of the simulation, in arcseconds
-uniform float u_D_d;                //< Lens distance, in Mpc
-
-uniform float u_show_source_plane;
-uniform float u_show_image_plane;
-uniform float u_show_density;
-uniform float u_show_critical_lines;
 
 in vec2 v_pos;
 in vec2 v_texpos;
 
 out vec4 o_fragmentColor;
 
+uniform float u_size;
+
 /** Converts an angle to texture coordinates */
 vec2 angleToTexcoords(vec2 angle) {
     return angle / u_angularRadius / 2.0 + vec2(0.5, 0.5);
-}
-
-/** Checks if the point is on the i'th source plane. */
-bool isOnSourcePlane(vec2 beta, int i) {
-    return length(beta - u_source_planes[i].origin) < u_source_planes[i].radius;
 }
 
 vec2 transformTheta(vec2 theta, lens theLens) {
@@ -96,11 +80,6 @@ float calculateQ(vec2 theta, float D_ds, float D_s, vec2 offset) {
 	return (1.0 - (D_ds/D_s) * derivatives.x) * (1.0 - (D_ds/D_s) * derivatives.y) - pow((D_ds/D_s) * derivatives.z, 2.0);
 }
 
-float calculateDensity(vec2 theta) {
-    vec3 derivatives = calculateAlphaDerivatives(theta, vec2(0.0, 0.0));
-    return (derivatives.x + derivatives.y) / 32.0;
-}
-
 bool isOnCriticalLine(vec2 theta, int i) {
     float offset = 0.002;
 
@@ -117,18 +96,6 @@ bool isOnCriticalLine(vec2 theta, int i) {
     else return false;
 }
 
-bool isOnCaustic() {
-    // for (float y = u_size - 1.0; y >= 0.0; y--) {
-    //     for (float x = 0.0; x < u_size; x++) {
-    //         vec2 texcoords = vec2(x / u_size, y / u_size);
-    //         vec2 pos = vec2(texture(u_causticsTexture, texcoords));
-    //         if (pos == v_pos) return true;
-    //     }
-    // }
-    // return false;
-    return texture(u_causticsTexture, v_texpos).r == 1.0;
-}
-
 vec2 calculateAlpha(vec2 theta) {
     vec2 sum = vec2(0.0, 0.0);
     for (int i = 0; i < int(u_num_lenses); i++) {
@@ -142,32 +109,26 @@ vec2 calculateAlpha(vec2 theta) {
     return sum;
 }
 
-vec4 traceTheta(vec2 theta) {
-    if (isOnCaustic()) return vec4(0.0, 0.0, 1.0, 1.0);
+vec2 calculateBeta(vec2 theta, vec2 alpha, int i) {
+    return theta - (u_source_planes[i].D_ds / u_source_planes[i].D_s) * alpha;
+}
 
-    vec2 alpha = calculateAlpha(theta);
-
-    for (int i = 0; i < int(u_num_source_planes); i++) {
-        vec2 beta;
-        if (u_source_planes[i].D_s > u_D_d)
-            beta = theta - (u_source_planes[i].D_ds / u_source_planes[i].D_s) * alpha;
-        else
-            beta = theta;
-
-        float density = calculateDensity(theta);
-        if (u_show_critical_lines == 1.0 && isOnCriticalLine(theta, i))     // critical line
-            return vec4(1.0, 0.0, 0.0, 1.0);
-        else if (u_show_source_plane == 1.0 && isOnSourcePlane(theta, i))   // source plane
-            return vec4(0.0, 1.0, 0.0, 1.0);
-        else if (u_show_image_plane == 1.0 && isOnSourcePlane(beta, i))     // image plane
-            return vec4(1.0, 1.0, 1.0, 1.0);
-        else if (u_show_density == 1.0)                                     // density
-            return vec4(density, density, 0.0, 1.0);
-    }
-    return vec4(0.0, 0.0, 0.0, 1.0);
+vec2 angleToAbsolutePosition(vec2 angle) {
+    vec2 pos = angle / u_angularRadius; // to [-1.0, 1.0]
+    pos.y *= -1.0;                      // invert y
+    pos = pos / 2.0 + vec2(0.5, 0.5);   // to [0.0, 1.0]
+    return pos; // * u_size;                // to [0, u_size]
 }
 
 void main() {
     vec2 theta = v_pos * u_angularRadius;
-    o_fragmentColor = traceTheta(theta);
+    vec2 alpha = calculateAlpha(theta);
+    o_fragmentColor = vec4(0.0, 0.0, 0.0, 1.0);
+    for (int i = 0; i < int(u_num_source_planes); i++) {
+        if (isOnCriticalLine(theta, i)) {
+            vec2 beta = calculateBeta(theta, alpha, i);
+            // vec2 position = (beta / u_angularRadius) / 2.0 + vec2(1.0, ) * u_size;
+            o_fragmentColor = vec4(angleToAbsolutePosition(beta), 0.0, 1.0);
+        }
+    }
 }

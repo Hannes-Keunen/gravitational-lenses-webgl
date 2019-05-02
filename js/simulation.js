@@ -219,7 +219,7 @@ function LensPlane(redshift) {
     }
 
     this.export = function() {
-        const filename = "lens.bin";
+        const filename = "lens.lensdata";
         if (this.lenses.length == 0) {
             return;
         } else if (this.lenses.length == 1) {
@@ -233,7 +233,7 @@ function LensPlane(redshift) {
         }
 
         var data = FS.readFile(filename);
-        downloadData(data, filename, "application/x-gravitationallens");
+        downloadData(data, filename, "application/x-lensdata");
         FS.unlink(filename);
     }
 
@@ -244,13 +244,16 @@ function Simulation(canvasID, size, angularRadius) {
     this.size = size;               /** Simulation size in pixels */
     this.angularRadius = angularRadius; /** Simulation size in arcseconds */
     this.changedAngularRadius = angularRadius;
-    this.canvas;                    /** HtmlCanvasObject */
-    this.gl;                        /** WebGL2RenderingContext */
+    this.canvas;                    /** WebGL canvas */
+    this.gl;                        /** WebGL context */
     this.helper;                    /** GLHelper */
-    this.simulationShader;          /** WebGLProgram */
-    this.displayShader;             /** WebGLProgram */
-    this.fbtexture;                 /** WebGLTexture */
+    this.simulationShader;          /** Simulation shader program */
+    this.displayShader;             /** Display shader program */
+    this.fbtexture;                 /** Framebuffer texture */
     this.framebuffer;               /** Framebuffer */
+    this.causticsShader             /** Shader program for drawing caustic positions */
+    this.causticsFramebuffer;
+    this.causticsTexture;
     this.uniforms = {};
     this.started = false;
 
@@ -271,9 +274,11 @@ function Simulation(canvasID, size, angularRadius) {
         this.helper = new GLHelper(this.gl);
         loadResources(
             ["shaders/vs_simulation.glsl", "shaders/fs_simulation.glsl",
-             "shaders/vs_display.glsl", "shaders/fs_display.glsl"],
+             "shaders/vs_display.glsl", "shaders/fs_display.glsl",
+             "shaders/vs_caustics.glsl", "shaders/fs_caustics.glsl"],
             this.loadShaders.bind(this));
         this.framebuffer = new Framebuffer(this.gl, this.size, this.size);
+        this.causticsFramebuffer = new Framebuffer(this.gl, this.size, this.size);
 
         this.lensPlane = new LensPlane(0.5);
 
@@ -294,12 +299,16 @@ function Simulation(canvasID, size, angularRadius) {
         this.lensPlane.alphaTextureArray.destroy();
         this.lensPlane.derivativeTextureArray.destroy();
         this.framebuffer.destroy();
+        this.causticsFramebuffer.destroy();
         this.gl.deleteProgram(this.simulationShader.program);
         this.gl.deleteProgram(this.displayShader.program);
+        this.gl.deleteProgram(this.causticsShader.program);
         this.gl.deleteShader(this.simulationShader.vertexShader);
         this.gl.deleteShader(this.simulationShader.fragmentShader);
         this.gl.deleteShader(this.displayShader.vertexShader);
         this.gl.deleteShader(this.displayShader.fragmentShader);
+        this.gl.deleteShader(this.causticsShader.vertexShader);
+        this.gl.deleteShader(this.causticsShader.fragmentShader);
     }
 
     this.setSize = function(size) {
@@ -320,6 +329,8 @@ function Simulation(canvasID, size, angularRadius) {
             sourcePlane.setRedshiftValue(sourcePlane.redshift, this.lensPlane.redshift);
         this.lensPlane.createAlphaTextures(this.size, this.angularRadius, this.helper);
         this.lensPlane.createAlphaDerivativeTextures(this.size, this.angularRadius, this.helper);
+        this.updateUniforms();
+        this.createCausticsTexture();
         this.started = true;
     }
 
@@ -334,16 +345,48 @@ function Simulation(canvasID, size, angularRadius) {
     }
 
     this.isReady = function() {
-        return this.started && this.displayShader != undefined && this.simulationShader != undefined;
+        return this.started 
+            && this.displayShader != undefined
+            && this.simulationShader != undefined
+            && this.causticsShader != undefined;
+    }
+
+    this.createCausticsTexture = function() {
+        var textures = {
+            u_alphaTextureArray: this.lensPlane.alphaTextureArray,
+            u_derivativeTextureArray: this.lensPlane.derivativeTextureArray,
+        };
+        this.helper.runProgram(this.causticsShader, textures, this.uniforms, this.causticsFramebuffer.framebuffer);
+        var pixels = this.causticsFramebuffer.readPixels();
+        var width = this.causticsFramebuffer.width;
+        var height = this.causticsFramebuffer.height;
+        var data = new Float32Array(width * height);
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                let pos_x = Math.round(pixels[  (y * width + x) * 4  ] / 255.0 * width);
+                let pos_y = Math.round(pixels[(y * width + x) * 4 + 1] / 255.0 * height);
+                if (pos_x != 0 && pos_y != 0) {
+                    data[pos_y * width + pos_x] = 1.0;
+                }
+            }
+        }
+        var count = 0;
+        for (let i = 0; i < width * height; i++)
+            if (data[i] != 0.0)
+                count++;
+        console.log(count + " pixels");
+        this.causticsTexture = this.helper.createTexture(width, height, this.gl.R32F, this.gl.RED, this.gl.FLOAT, data);
     }
 
     this.update = function() {
         this.updateUniforms();
         var textures = {
             u_alphaTextureArray: this.lensPlane.alphaTextureArray,
-            u_derivativeTextureArray: this.lensPlane.derivativeTextureArray };
-        this.helper.runProgram(this.simulationShader.program, textures, this.uniforms, this.framebuffer.framebuffer);
-        this.helper.runProgram(this.displayShader.program, {u_texture: this.framebuffer.colorAttachment}, {}, null);
+            u_derivativeTextureArray: this.lensPlane.derivativeTextureArray,
+            u_causticsTexture: this.causticsTexture,
+        };
+        this.helper.runProgram(this.simulationShader, textures, this.uniforms, null);
+        // this.helper.runProgram(this.displayShader, {u_texture: this.framebuffer.colorAttachment}, {}, null);
     }
 
     this.updateUniforms = function() {
@@ -376,6 +419,7 @@ function Simulation(canvasID, size, angularRadius) {
     this.loadShaders = function(sources) {
         this.simulationShader = this.helper.createProgram(sources["shaders/vs_simulation.glsl"], sources["shaders/fs_simulation.glsl"]);
         this.displayShader = this.helper.createProgram(sources["shaders/vs_display.glsl"], sources["shaders/fs_display.glsl"]);
+        this.causticsShader = this.helper.createProgram(sources["shaders/vs_caustics.glsl"], sources["shaders/fs_caustics.glsl"]);
     }
 
     this.constructor();

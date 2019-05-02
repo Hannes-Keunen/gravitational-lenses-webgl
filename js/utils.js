@@ -160,6 +160,8 @@ function TextureArray(gl, length, width, height, internalFormat, format, type, d
 function Framebuffer(gl, width, height) {
     this.colorAttachment;
     this.framebuffer;
+    this.width = width;
+    this.height = height;
 
     this.constructor = function() {
         this.colorAttachment = gl.createTexture();
@@ -174,7 +176,8 @@ function Framebuffer(gl, width, height) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.colorAttachment, 0);
 
-        if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) != gl.FRAMEBUFFER_COMPLETE)
+        var status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+        if (status != gl.FRAMEBUFFER_COMPLETE)
             throw new Error("Framebuffer is not complete, return value is " + status);
 
         gl.bindTexture(gl.TEXTURE_2D, null);
@@ -186,17 +189,12 @@ function Framebuffer(gl, width, height) {
         gl.deleteFramebuffer(this.framebuffer);
     }
 
-    this.readPixel = function(x, y) {
+    this.readPixels = function() {
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
-        var pixels = new Uint8Array(4);
-        gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        var pixels = new Uint8Array(width * height * 4);
+        gl.readPixels(0, 0, this.width, this.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        return {
-            r: pixels[0],
-            g: pixels[1],
-            b: pixels[2],
-            a: pixels[3],
-        }
+        return pixels;
     }
 
     this.constructor();
@@ -253,6 +251,7 @@ function GLHelper(gl) {
             program: program,
             vertexShader: vertexShader,
             fragmentShader: fragmentShader,
+            uniformLocations: {},
         };
     }
 
@@ -295,7 +294,7 @@ function GLHelper(gl) {
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-        gl.useProgram(program);
+        gl.useProgram(program.program);
 
         // Bind textures
         var i = 0;
@@ -346,14 +345,11 @@ function GLHelper(gl) {
 
     /** Returns the location of a shader uniform variable. */
     this.getUniformLocation = function(program, name) {
-        if (!(program in this.uniformLocations))
-            this.uniformLocations[program] = {};
-
-        if (name in this.uniformLocations[program]) {
-            return this.uniformLocations[program][name];
+        if (name in program.uniformLocations) {
+            return program.uniformLocations[name];
         } else {
-            loc = gl.getUniformLocation(program, name);
-            this.uniformLocations[program][name] = loc;
+            loc = gl.getUniformLocation(program.program, name);
+            program.uniformLocations[name] = loc;
             return loc;
         }
     }
