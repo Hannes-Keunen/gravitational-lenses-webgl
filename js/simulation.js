@@ -248,9 +248,6 @@ function Simulation(canvasID, size, angularRadius) {
     this.gl;                        /** WebGL context */
     this.helper;                    /** GLHelper */
     this.simulationShader;          /** Simulation shader program */
-    this.displayShader;             /** Display shader program */
-    this.fbtexture;                 /** Framebuffer texture */
-    this.framebuffer;               /** Framebuffer */
     this.causticsShader             /** Shader program for drawing caustic positions */
     this.causticsFramebuffer;
     this.causticsTexture;
@@ -274,7 +271,6 @@ function Simulation(canvasID, size, angularRadius) {
         this.helper = new GLHelper(this.gl);
         loadResources(
             ["shaders/vs_simulation.glsl", "shaders/fs_simulation.glsl",
-             "shaders/vs_display.glsl", "shaders/fs_display.glsl",
              "shaders/vs_caustics.glsl", "shaders/fs_caustics.glsl"],
             this.loadShaders.bind(this));
         this.framebuffer = new Framebuffer(this.gl, this.size, this.size);
@@ -301,12 +297,9 @@ function Simulation(canvasID, size, angularRadius) {
         this.framebuffer.destroy();
         this.causticsFramebuffer.destroy();
         this.gl.deleteProgram(this.simulationShader.program);
-        this.gl.deleteProgram(this.displayShader.program);
         this.gl.deleteProgram(this.causticsShader.program);
         this.gl.deleteShader(this.simulationShader.vertexShader);
         this.gl.deleteShader(this.simulationShader.fragmentShader);
-        this.gl.deleteShader(this.displayShader.vertexShader);
-        this.gl.deleteShader(this.displayShader.fragmentShader);
         this.gl.deleteShader(this.causticsShader.vertexShader);
         this.gl.deleteShader(this.causticsShader.fragmentShader);
     }
@@ -316,7 +309,8 @@ function Simulation(canvasID, size, angularRadius) {
         this.canvas.width = size;
         this.canvas.height = size;
         this.gl.viewport(0, 0, size, size);
-        // TODO: this doesn't work as expected
+        if (this.isReady())
+            this.start();
     }
 
     this.setAngularRadius = function(angularRadius) {
@@ -346,7 +340,6 @@ function Simulation(canvasID, size, angularRadius) {
 
     this.isReady = function() {
         return this.started 
-            && this.displayShader != undefined
             && this.simulationShader != undefined
             && this.causticsShader != undefined;
     }
@@ -365,16 +358,10 @@ function Simulation(canvasID, size, angularRadius) {
             for (let x = 0; x < width; x++) {
                 let pos_x = Math.round(pixels[  (y * width + x) * 4  ] / 255.0 * width);
                 let pos_y = Math.round(pixels[(y * width + x) * 4 + 1] / 255.0 * height);
-                if (pos_x != 0 && pos_y != 0) {
+                if (pos_x != 0 && pos_y != 0)
                     data[pos_y * width + pos_x] = 1.0;
-                }
             }
         }
-        var count = 0;
-        for (let i = 0; i < width * height; i++)
-            if (data[i] != 0.0)
-                count++;
-        console.log(count + " pixels");
         this.causticsTexture = this.helper.createTexture(width, height, this.gl.R32F, this.gl.RED, this.gl.FLOAT, data);
     }
 
@@ -386,7 +373,6 @@ function Simulation(canvasID, size, angularRadius) {
             u_causticsTexture: this.causticsTexture,
         };
         this.helper.runProgram(this.simulationShader, textures, this.uniforms, null);
-        // this.helper.runProgram(this.displayShader, {u_texture: this.framebuffer.colorAttachment}, {}, null);
     }
 
     this.updateUniforms = function() {
@@ -418,7 +404,6 @@ function Simulation(canvasID, size, angularRadius) {
 
     this.loadShaders = function(sources) {
         this.simulationShader = this.helper.createProgram(sources["shaders/vs_simulation.glsl"], sources["shaders/fs_simulation.glsl"]);
-        this.displayShader = this.helper.createProgram(sources["shaders/vs_display.glsl"], sources["shaders/fs_display.glsl"]);
         this.causticsShader = this.helper.createProgram(sources["shaders/vs_caustics.glsl"], sources["shaders/fs_caustics.glsl"]);
     }
 
