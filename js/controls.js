@@ -509,8 +509,8 @@ function Controls(sim) {
         this.lensRedshiftDisplay.innerHTML  = this.simulation.lensPlane.redshift;
         this.lensRedshiftSlider.value       = this.simulation.lensPlane.redshift * 100;
         this.simulationSize                 = this.sizePicker.value;
-        this.angularRadiusDisplay.innerHTML = this.simulation.angularRadius;
-        this.angularRadiusSlider.value      = this.simulation.angularRadius;
+        this.angularRadiusDisplay.innerHTML = this.simulation.angularRadius * 2.0;
+        this.angularRadiusSlider.value      = this.simulation.angularRadius * 2.0;
     }
 
     this.resizeCallback = function() {
@@ -527,7 +527,7 @@ function Controls(sim) {
     }
 
     this.angularRadiusCallback = function() {
-        this.simulation.setAngularRadius(this.angularRadiusSlider.value);
+        this.simulation.setAngularRadius(this.angularRadiusSlider.value / 2.0);
         this.angularRadiusDisplay.innerHTML = this.angularRadiusSlider.value;
     }
 
