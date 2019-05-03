@@ -118,6 +118,7 @@ function Uniform(type, value) {
 
 Uniform.FLOAT = 1;
 Uniform.VEC2 = 2;
+Uniform.INT = 3;
 
 /** Helper for WebGL texture arrays. */
 function TextureArray(gl, length, width, height, internalFormat, format, type, data = []) {
@@ -340,6 +341,7 @@ function GLHelper(gl) {
         switch (uniform.type) {
             case Uniform.FLOAT: gl.uniform1f(loc, uniform.value); break;
             case Uniform.VEC2: gl.uniform2f(loc, uniform.value[0], uniform.value[1]); break;
+            case Uniform.INT: gl.uniform1i(loc, uniform.value); break;
             default: throw new Error("Invalid uniform type: " + uniform.type + "(value: " + uniform.value + ")");
         }
     }

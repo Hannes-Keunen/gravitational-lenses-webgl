@@ -4,6 +4,7 @@ const DIST_PC       = 3.0856775714409184e16;
 const DIST_KPC      = 1000.0 * DIST_PC;
 const DIST_MPC      = 1000.0 * DIST_KPC;
 const SPEED_C       = 299792458.0;
+const CONST_G       = 6.67300e-11;
 const ANGLE_DEGREE  = Math.PI / 180.0;
 const ANGLE_ARCMIN  = ANGLE_DEGREE / 60;
 const ANGLE_ARCSEC  = ANGLE_ARCMIN / 60;
@@ -78,6 +79,27 @@ function GravitationalLens(model) {
             // case GravitationalLens.MASS_SHEET: return "density" in params;
             case GravitationalLens.IMPORT:  return "file" in params;
             default: throw new Error("Invalid lens model: " + model);
+        }
+    }
+
+    this.getParam1 = function(D_d) {
+        switch (model) {
+            case GravitationalLens.PLUMMER: return (4.0 * this.params.mass*MASS_SUN * CONST_G) / (SPEED_C*SPEED_C * D_d*DIST_MPC);
+            case GravitationalLens.SIS:     return this.params.velocityDispersion;
+            case GravitationalLens.NSIS:    return this.params.velocityDispersion;
+            case GravitationalLens.SIE:     return this.params.velocityDispersion;
+            case GravitationalLens.NSIE:    return this.params.velocityDispersion;
+            default: return 0;
+        }
+    }
+
+    this.getParam2 = function() {
+        switch (model) {
+            case GravitationalLens.PLUMMER: return this.params.angularWidth * ANGLE_ARCSEC;
+            case GravitationalLens.NSIS:    return this.params.angularCoreRadius;
+            case GravitationalLens.SIE:     return this.params.ellipticity;
+            case GravitationalLens.NSIE:    return this.params.ellipticity;
+            default: return 0;
         }
     }
 
@@ -175,6 +197,9 @@ function LensPlane(redshift) {
         var alphaBuffer = new EmscriptenBuffer(simulationSize * simulationSize * 2);
 
         for (let i = 0; i < this.lenses.length; i++) {
+            if (this.lenses[i].model == GravitationalLens.PLUMMER)
+                continue;   // plummer is calculated on the GPU
+
             let lens = this.lenses[i].createHandle(this.D_d);
             for (let y = 0; y < simulationSize; y++) {
                 let thetaY = toAngular(y, simulationSize, angularRadius);
@@ -201,6 +226,9 @@ function LensPlane(redshift) {
         var derivativeBuffer = new EmscriptenBuffer(simulationSize * simulationSize * 3);
 
         for (let i = 0; i < this.lenses.length; i++) {
+            if (this.lenses[i].model == GravitationalLens.PLUMMER)
+                continue;   // plummer is calculated on the GPU
+
             let lens = this.lenses[i].createHandle(this.D_d);
             for (let y = 0; y < simulationSize; y++) {
                 let thetaY = toAngular(y, simulationSize, angularRadius);
@@ -216,6 +244,13 @@ function LensPlane(redshift) {
         }
 
         derivativeBuffer.destroy();
+    }
+
+    this.canUpdateImmediately = function() {
+        for (let lens of this.lenses)
+            if (lens.model != GravitationalLens.PLUMMER)
+                return false;
+        return true;
     }
 
     this.export = function() {
@@ -312,7 +347,12 @@ function Simulation(canvasID, size, angularRadius) {
     }
 
     this.setAngularRadius = function(angularRadius) {
-        this.changedAngularRadius = angularRadius;
+        if (this.lensPlane.canUpdateImmediately()) {
+            this.angularRadius = angularRadius;
+            this.changedAngularRadius = angularRadius;
+        } else {
+            this.changedAngularRadius = angularRadius;
+        }
     }
 
     this.start = function() {
@@ -391,6 +431,9 @@ function Simulation(canvasID, size, angularRadius) {
             this.uniforms["u_lenses["+i+"].strength"] = new Uniform(Uniform.FLOAT, lens.strength);
             this.uniforms["u_lenses["+i+"].position"] = new Uniform(Uniform.VEC2, [lens.translationX, lens.translationY]);
             this.uniforms["u_lenses["+i+"].angle"] = new Uniform(Uniform.FLOAT, lens.angle*ANGLE_DEGREE);
+            this.uniforms["u_lenses["+i+"].model"] = new Uniform(Uniform.INT, lens.model);
+            this.uniforms["u_lenses["+i+"].param1"] = new Uniform(Uniform.FLOAT, lens.getParam1(this.lensPlane.D_d));
+            this.uniforms["u_lenses["+i+"].param2"] = new Uniform(Uniform.FLOAT, lens.getParam2());
         }
         for (let i = 0; i < this.sourcePlanes.length; i++) {
             let sourcePlane = this.sourcePlanes[i];

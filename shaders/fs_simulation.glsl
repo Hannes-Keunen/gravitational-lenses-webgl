@@ -2,16 +2,26 @@
 
 precision highp float;
 
-const float PI = 3.1415926535897932384626433832795;
-const float ANGLE_DEGREE = PI / 180.0;
-const float ANGLE_ARCMIN = ANGLE_DEGREE / 60.0;
-const float ANGLE_ARCSEC = ANGLE_ARCMIN / 60.0;
+const float CONST_PI        = 3.1415926535;
+const float ANGLE_DEGREE    = CONST_PI / 180.0;
+const float ANGLE_ARCMIN    = ANGLE_DEGREE / 60.0;
+const float ANGLE_ARCSEC    = ANGLE_ARCMIN / 60.0;
+const float DIST_PC         = 3.0856775714409184e16;
+const float DIST_KPC        = 1000.0 * DIST_PC;
+const float DIST_MPC        = 1000.0 * DIST_KPC;
 
 struct lens {
     float strength;
     vec2 position;
     float angle;
+    int model;
+    float param1;
+    float param2;
 };
+
+const int PLUMMER   = 1;
+const int SIS       = 2;
+const int SIE       = 4;
 
 struct source_plane {
     float D_ds;     //< Distance to the lens, in Mpc
@@ -59,6 +69,29 @@ vec2 transformTheta(vec2 theta, lens theLens) {
                 -theta0.x*sin(theLens.angle) + theta0.y*cos(theLens.angle));
 }
 
+vec3 calculateLensAlphaDerivatives(vec2 theta, int index) {
+    if (u_lenses[index].model == PLUMMER) {
+        float scale = u_lenses[index].param1;   // (4*G*M) / (c^2*Dd)
+        float width = u_lenses[index].param2;
+
+        vec2 scaledTheta = theta * ANGLE_ARCSEC;
+        float x = scaledTheta.x;
+        float y = scaledTheta.y;
+        float x2 = x * x;
+        float y2 = y * y;
+        float w2 = width * width;
+        float denom = pow(x2 + y2 + w2, 2.0);
+
+        float axx = -scale * (x2 - y2 - w2) / denom;
+        float ayy = -scale * (y2 - x2 - w2) / denom;
+        float axy = -scale *   2.0 * x * y  / denom;
+        return vec3(axx, ayy, axy);
+    } else {
+        vec2 texcoord = angleToTexcoords(theta);
+        return texture(u_derivativeTextureArray, vec3(texcoord, index)).xyz;
+    }
+}
+
 vec3 calculateAlphaDerivatives(vec2 theta, vec2 offset) {
     float axx = 0.0;
 	float ayy = 0.0;
@@ -72,8 +105,7 @@ vec3 calculateAlphaDerivatives(vec2 theta, vec2 offset) {
 		float csa = ca*sa;
 
         vec2 theta0 = transformTheta(theta, u_lenses[i]);
-        vec2 texcoord = angleToTexcoords(theta0) + offset;
-        vec4 derivatives = texture(u_derivativeTextureArray, vec3(texcoord, i));
+        vec3 derivatives = calculateLensAlphaDerivatives(theta0 + offset * u_angularRadius, i);
 
 		float axx0 = derivatives.x * u_lenses[i].strength;
 		float ayy0 = derivatives.y * u_lenses[i].strength;
@@ -102,7 +134,7 @@ float calculateDensity(vec2 theta) {
 }
 
 bool isOnCriticalLine(vec2 theta, int i) {
-    float offset = 0.002;
+    float offset = 0.005;
 
     // use nearby points to check if there is a zero value inbetween
     float right  = calculateQ(theta, u_source_planes[i].D_ds, u_source_planes[i].D_s,  vec2(0, offset));
@@ -129,11 +161,24 @@ bool isOnCaustic() {
     return texture(u_causticsTexture, v_texpos).r == 1.0;
 }
 
+vec2 calculateLensAlpha(vec2 theta, int index) {
+    if (u_lenses[index].model == PLUMMER) {
+        float scale = u_lenses[index].param1;   // (4*G*M) / (c^2*Dd)
+        float width = u_lenses[index].param2;
+
+        vec2 scaledTheta = theta * ANGLE_ARCSEC;
+        float factor = dot(scaledTheta, scaledTheta) + pow(width, 2.0);
+        return theta * scale / factor;
+    } else {
+        return texture(u_alphaTextureArray, vec3(angleToTexcoords(theta), index)).xy;
+    }
+}
+
 vec2 calculateAlpha(vec2 theta) {
     vec2 sum = vec2(0.0, 0.0);
     for (int i = 0; i < int(u_num_lenses); i++) {
         vec2 theta0 = transformTheta(theta, u_lenses[i]);
-        vec2 alpha = vec2(texture(u_alphaTextureArray, vec3(angleToTexcoords(theta0), i)));
+        vec2 alpha = calculateLensAlpha(theta0, i);
         alpha *= u_lenses[i].strength;
         alpha = vec2(alpha.x*cos(u_lenses[i].angle) - alpha.y*sin(u_lenses[i].angle),
                      alpha.x*sin(u_lenses[i].angle) + alpha.y*cos(u_lenses[i].angle));
@@ -142,29 +187,30 @@ vec2 calculateAlpha(vec2 theta) {
     return sum;
 }
 
+vec2 calculateBeta(vec2 theta, vec2 alpha, int index) {
+    return theta - (u_source_planes[index].D_ds / u_source_planes[index].D_s) * alpha;
+}
+
 vec4 traceTheta(vec2 theta) {
     if (isOnCaustic()) return vec4(0.0, 0.0, 1.0, 1.0);
 
     vec2 alpha = calculateAlpha(theta);
-
     for (int i = 0; i < int(u_num_source_planes); i++) {
-        vec2 beta;
-        if (u_source_planes[i].D_s > u_D_d)
-            beta = theta - (u_source_planes[i].D_ds / u_source_planes[i].D_s) * alpha;
-        else
-            beta = theta;
-
-        float density = calculateDensity(theta);
+        vec2 beta = calculateBeta(theta, alpha, i);
         if (u_show_critical_lines == 1.0 && isOnCriticalLine(theta, i))     // critical line
             return vec4(1.0, 0.0, 0.0, 1.0);
         else if (u_show_source_plane == 1.0 && isOnSourcePlane(theta, i))   // source plane
             return vec4(0.0, 1.0, 0.0, 1.0);
         else if (u_show_image_plane == 1.0 && isOnSourcePlane(beta, i))     // image plane
             return vec4(1.0, 1.0, 1.0, 1.0);
-        else if (u_show_density == 1.0)                                     // density
-            return vec4(density, density, 0.0, 1.0);
     }
-    return vec4(0.0, 0.0, 0.0, 1.0);
+
+    if (u_show_density == 1.0) {
+        float density = calculateDensity(theta);
+        return vec4(density, density, 0.0, 1.0);
+    } else {
+        return vec4(0.0, 0.0, 0.0, 1.0);
+    }
 }
 
 void main() {
