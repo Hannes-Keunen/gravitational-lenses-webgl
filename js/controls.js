@@ -467,11 +467,12 @@ function Controls(sim) {
     this.imagePlaneToggle       = document.getElementById("image_plane_toggle");
     this.densityToggle          = document.getElementById("density_toggle");
     this.criticalLineToggle     = document.getElementById("critical_line_toggle");
+    this.causticsToggle         = document.getElementById("caustics_toggle");
+    this.causticsRealtimeToggle = document.getElementById("caustics_realtime_toggle");
     this.sourcePlaneList        = document.getElementById("source_plane_list");
 
     this.lensRedshiftSlider     = document.getElementById("lens_redshift_slider");
     this.lensRedshiftDisplay    = document.getElementById("lens_redshift_value");
-    this.disableButton          = document.getElementById("disable_lenses");
     this.startSimulationButton  = document.getElementById("start_simulation");
     this.exportButton           = document.getElementById("export");
 
@@ -495,6 +496,8 @@ function Controls(sim) {
         this.imagePlaneToggle       .addEventListener("change", this.imagePlaneToggleCallback.bind(this));
         this.densityToggle          .addEventListener("change", this.densityToggleCallback.bind(this));
         this.criticalLineToggle     .addEventListener("change", this.criticalLineToggleCallback.bind(this));
+        this.causticsToggle         .addEventListener("change", this.causticsToggleCallback.bind(this));
+        this.causticsRealtimeToggle .addEventListener("change", this.causticsRealtimeToggleCallback.bind(this));
         this.lensRedshiftSlider     .addEventListener("input",  this.lensRedshiftCallback.bind(this));
         this.addLensButton          .addEventListener("click",  this.addLensCallback.bind(this));
         this.addSourcePlaneButton   .addEventListener("click",  this.addSourcePlane.bind(this));
@@ -545,6 +548,15 @@ function Controls(sim) {
 
     this.criticalLineToggleCallback = function() {
         this.simulation.showCriticalLines = this.criticalLineToggle.checked;
+    }
+
+    this.causticsToggleCallback = function() {
+        this.simulation.showCaustics = this.causticsToggle.checked;
+        this.causticsRealtimeToggle.disabled = !this.causticsToggle.checked;
+    }
+
+    this.causticsRealtimeToggleCallback = function() {
+        this.simulation.realtimeCaustics = this.causticsRealtimeToggle.checked;
     }
 
     this.lensRedshiftCallback = function() {

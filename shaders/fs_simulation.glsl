@@ -47,6 +47,7 @@ uniform float u_show_source_plane;
 uniform float u_show_image_plane;
 uniform float u_show_density;
 uniform float u_show_critical_lines;
+uniform float u_show_caustics;
 
 in vec2 v_pos;
 in vec2 v_texpos;
@@ -192,7 +193,8 @@ vec2 calculateBeta(vec2 theta, vec2 alpha, int index) {
 }
 
 vec4 traceTheta(vec2 theta) {
-    if (isOnCaustic()) return vec4(0.0, 0.0, 1.0, 1.0);
+    if (u_show_caustics == 1.0 && isOnCaustic())
+        return vec4(0.0, 0.0, 1.0, 1.0);
 
     vec2 alpha = calculateAlpha(theta);
     for (int i = 0; i < int(u_num_source_planes); i++) {

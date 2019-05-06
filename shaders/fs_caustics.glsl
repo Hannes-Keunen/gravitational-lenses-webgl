@@ -38,14 +38,13 @@ uniform float u_num_lenses;
 uniform source_plane u_source_planes[16];
 uniform float u_num_source_planes;
 
+uniform float u_size;               //< Canvas size, in pixels
 uniform float u_angularRadius;      //< Angular size of the simulation, in arcseconds
 
 in vec2 v_pos;
 in vec2 v_texpos;
 
 out ivec2 o_fragmentColor;
-
-uniform float u_size;
 
 /** Converts an angle to texture coordinates */
 vec2 angleToTexcoords(vec2 angle) {
@@ -159,14 +158,14 @@ vec2 calculateAlpha(vec2 theta) {
     return sum;
 }
 
-vec2 calculateBeta(vec2 theta, vec2 alpha, int i) {
-    return theta - (u_source_planes[i].D_ds / u_source_planes[i].D_s) * alpha;
+vec2 calculateBeta(vec2 theta, vec2 alpha, int index) {
+    return theta - (u_source_planes[index].D_ds / u_source_planes[index].D_s) * alpha;
 }
 
 ivec2 angleToAbsolutePosition(vec2 angle) {
     vec2 pos = angle / u_angularRadius; // to [-1.0, 1.0]
     pos = pos / 2.0 + vec2(0.5, 0.5);   // to [0.0, 1.0]
-    return ivec2(int(pos.x * u_size), float(pos.y * u_size));
+    return ivec2(int(pos.x * u_size), int(pos.y * u_size));
 }
 
 void main() {

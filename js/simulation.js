@@ -294,6 +294,8 @@ function Simulation(canvasID, size, angularRadius) {
     this.showImagePlane     = true;
     this.showDensity        = true;
     this.showCriticalLines  = true;
+    this.showCaustics       = true;
+    this.realtimeCaustics   = true;
 
     this.lens;                      /** GravitationalLens */
     this.sourcePlanes = [];         /** SourcePlane[] */
@@ -323,6 +325,7 @@ function Simulation(canvasID, size, angularRadius) {
         this.uniforms["u_show_image_plane"] = new Uniform(Uniform.FLOAT, this.showImagePlane);
         this.uniforms["u_show_density"] = new Uniform(Uniform.FLOAT, this.showDensity);
         this.uniforms["u_show_critical_lines"] = new Uniform(Uniform.FLOAT, this.showCriticalLines);
+        this.uniforms["u_show_caustics"] = new Uniform(Uniform.FLOAT, this.showCriticalLines);
     }
 
     this.destroy = function() {
@@ -360,9 +363,11 @@ function Simulation(canvasID, size, angularRadius) {
         for (let sourcePlane of this.sourcePlanes)
             sourcePlane.setRedshiftValue(sourcePlane.redshift, this.lensPlane.redshift);
         this.lensPlane.createAlphaTextures(this.size, this.angularRadius, this.helper);
-        this.lensPlane.createAlphaDerivativeTextures(this.size, this.angularRadius, this.helper);
-        this.updateUniforms();
-        this.createCausticsTexture();
+        this.lensPlane.createAlphaDerivativeTextures(this.size, this.angularRadius, this.helper)
+        if (this.showCaustics && !this.realtimeCaustics) {
+            this.updateUniforms();
+            this.createCausticsTexture();
+        }
         this.started = true;
     }
 
@@ -388,6 +393,7 @@ function Simulation(canvasID, size, angularRadius) {
             u_derivativeTextureArray: this.lensPlane.derivativeTextureArray,
         };
         this.helper.runProgram(this.causticsShader, textures, this.uniforms, this.causticsFramebuffer.framebuffer);
+
         var width = this.causticsFramebuffer.width;
         var height = this.causticsFramebuffer.height;
         var pixels = new Int16Array(width * height * 2);
@@ -406,6 +412,8 @@ function Simulation(canvasID, size, angularRadius) {
 
     this.update = function() {
         this.updateUniforms();
+        if (this.showCaustics && this.realtimeCaustics)
+            this.createCausticsTexture();
         var textures = {
             u_alphaTextureArray: this.lensPlane.alphaTextureArray,
             u_derivativeTextureArray: this.lensPlane.derivativeTextureArray,
@@ -421,10 +429,11 @@ function Simulation(canvasID, size, angularRadius) {
         this.uniforms["u_num_lenses"].value = this.lensPlane.lenses.length;
         this.uniforms["u_D_d"].value = this.lensPlane.D_d;
 
-        this.uniforms["u_show_source_plane"].value = this.showSourcePlane
-        this.uniforms["u_show_image_plane"].value = this.showImagePlane
-        this.uniforms["u_show_density"].value = this.showDensity
-        this.uniforms["u_show_critical_lines"].value = this.showCriticalLines
+        this.uniforms["u_show_source_plane"].value = this.showSourcePlane;
+        this.uniforms["u_show_image_plane"].value = this.showImagePlane;
+        this.uniforms["u_show_density"].value = this.showDensity;
+        this.uniforms["u_show_critical_lines"].value = this.showCriticalLines;
+        this.uniforms["u_show_caustics"].value = this.showCaustics;
 
         for (let i = 0; i < this.lensPlane.lenses.length; i++) {
             let lens = this.lensPlane.lenses[i];
