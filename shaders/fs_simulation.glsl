@@ -87,6 +87,20 @@ vec3 calculateLensAlphaDerivatives(vec2 theta, int index) {
         float ayy = -scale * (y2 - x2 - w2) / denom;
         float axy = -scale *   2.0 * x * y  / denom;
         return vec3(axx, ayy, axy);
+    } else if (u_lenses[index].model == SIS) {
+        float scale = u_lenses[index].param1;   // (4*PI*Sv^2) / c^2
+
+        vec2 scaledTheta = theta * ANGLE_ARCSEC;
+        float x = scaledTheta.x;
+        float y = scaledTheta.y;
+        float x2 = x * x;
+        float y2 = y * y;
+        float denom = pow(x2 + y2, 3.0/2.0);
+
+        float axx = scale *   y2  / denom;
+        float ayy = scale *   x2  / denom;
+        float axy = scale * x * y / denom;
+        return vec3(axx, ayy, axy);
     } else {
         vec2 texcoord = angleToTexcoords(theta);
         return texture(u_derivativeTextureArray, vec3(texcoord, index)).xyz;
@@ -170,6 +184,10 @@ vec2 calculateLensAlpha(vec2 theta, int index) {
         vec2 scaledTheta = theta * ANGLE_ARCSEC;
         float factor = dot(scaledTheta, scaledTheta) + pow(width, 2.0);
         return theta * scale / factor;
+    } else if (u_lenses[index].model == SIS) {
+        float scale = u_lenses[index].param1;   // (4*PI*Sv^2) / c^2
+        vec2 e = normalize(theta);
+        return scale * e / ANGLE_ARCSEC;
     } else {
         return texture(u_alphaTextureArray, vec3(angleToTexcoords(theta), index)).xy;
     }

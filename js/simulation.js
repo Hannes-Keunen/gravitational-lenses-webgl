@@ -85,7 +85,7 @@ function GravitationalLens(model) {
     this.getParam1 = function(D_d) {
         switch (model) {
             case GravitationalLens.PLUMMER: return (4.0 * this.params.mass*MASS_SUN * CONST_G) / (SPEED_C*SPEED_C * D_d*DIST_MPC);
-            case GravitationalLens.SIS:     return this.params.velocityDispersion;
+            case GravitationalLens.SIS:     return (4.0 * Math.PI * Math.pow(this.params.velocityDispersion * 1000.0, 2)) / (SPEED_C * SPEED_C);
             case GravitationalLens.NSIS:    return this.params.velocityDispersion;
             case GravitationalLens.SIE:     return this.params.velocityDispersion;
             case GravitationalLens.NSIE:    return this.params.velocityDispersion;
@@ -178,16 +178,6 @@ function LensPlane(redshift) {
         this.D_d = calculateAngularDiameterDistance(this.redshift, 0.0);
     }
 
-    this.addLens = function(lens) {
-        this.lenses.push(lens);
-    }
-
-    this.removeLens = function(lens) {
-        var index = this.lenses.indexOf(lens);
-        this.lenses.splice(index, 1);
-        return index;
-    }
-
     this.createAlphaTextures = function(simulationSize, angularRadius, glhelper) {
         if (this.alphaTextureArray != undefined)
             this.alphaTextureArray.destroy();
@@ -197,8 +187,9 @@ function LensPlane(redshift) {
         var alphaBuffer = new EmscriptenBuffer(simulationSize * simulationSize * 2);
 
         for (let i = 0; i < this.lenses.length; i++) {
-            if (this.lenses[i].model == GravitationalLens.PLUMMER)
-                continue;   // plummer is calculated on the GPU
+            if (this.lenses[i].model == GravitationalLens.PLUMMER
+                || this.lenses[i].model == GravitationalLens.SIS)
+                continue;   // Plummer and SIS are calculated on the GPU
 
             let lens = this.lenses[i].createHandle(this.D_d);
             for (let y = 0; y < simulationSize; y++) {
@@ -226,8 +217,9 @@ function LensPlane(redshift) {
         var derivativeBuffer = new EmscriptenBuffer(simulationSize * simulationSize * 3);
 
         for (let i = 0; i < this.lenses.length; i++) {
-            if (this.lenses[i].model == GravitationalLens.PLUMMER)
-                continue;   // plummer is calculated on the GPU
+            if (this.lenses[i].model == GravitationalLens.PLUMMER
+                || this.lenses[i].model == GravitationalLens.SIS)
+                continue;   // Plummer and SIS are calculated on the GPU
 
             let lens = this.lenses[i].createHandle(this.D_d);
             for (let y = 0; y < simulationSize; y++) {
@@ -248,7 +240,8 @@ function LensPlane(redshift) {
 
     this.canUpdateImmediately = function() {
         for (let lens of this.lenses)
-            if (lens.model != GravitationalLens.PLUMMER)
+            if (lens.model != GravitationalLens.PLUMMER
+                && lens.model != GravitationalLens.SIS)
                 return false;
         return true;
     }
@@ -378,6 +371,18 @@ function Simulation(canvasID, size, angularRadius) {
     this.removeSourcePlane = function(sourcePlane) {
         var index = this.sourcePlanes.indexOf(sourcePlane);
         this.sourcePlanes.splice(index, 1);
+        return index;
+    }
+
+    this.addLens = function(lens) {
+        this.lensPlane.lenses.push(lens);
+        if (!this.started && this.lensPlane.canUpdateImmediately())
+            this.start();
+    }
+
+    this.removeLens = function(lens) {
+        var index = this.lensPlane.lenses.indexOf(lens);
+        this.lensPlane.lenses.splice(index, 1);
         return index;
     }
 

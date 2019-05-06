@@ -450,7 +450,7 @@ function LensControls(view, lens, simulation, removeCallback) {
     }
 
     this.deleteCallback = function() {
-        var index = simulation.lensPlane.removeLens(this.lens);
+        var index = simulation.removeLens(this.lens);
         this.removeCallback(index);
     }
 
@@ -575,7 +575,7 @@ function Controls(sim) {
     this.addLensCallback = function() {
         // Create a new lens plane
         var lens = new GravitationalLens(parseInt(this.lensModelPicker.value));
-        this.simulation.lensPlane.addLens(lens);
+        this.simulation.addLens(lens);
 
         // Create the controls view
         var row = document.createElement("li");
