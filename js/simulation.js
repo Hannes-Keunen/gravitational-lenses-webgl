@@ -86,9 +86,9 @@ function GravitationalLens(model) {
         switch (model) {
             case GravitationalLens.PLUMMER: return (4.0 * this.params.mass*MASS_SUN * CONST_G) / (SPEED_C*SPEED_C * D_d*DIST_MPC);
             case GravitationalLens.SIS:     return (4.0 * Math.PI * Math.pow(this.params.velocityDispersion * 1000.0, 2)) / (SPEED_C * SPEED_C);
-            case GravitationalLens.NSIS:    return this.params.velocityDispersion;
-            case GravitationalLens.SIE:     return this.params.velocityDispersion;
-            case GravitationalLens.NSIE:    return this.params.velocityDispersion;
+            case GravitationalLens.NSIS:    return (4.0 * Math.PI * Math.pow(this.params.velocityDispersion * 1000.0, 2)) / (SPEED_C * SPEED_C);
+            case GravitationalLens.SIE:     return (4.0 * Math.PI * Math.pow(this.params.velocityDispersion * 1000.0, 2)) / (SPEED_C * SPEED_C);
+            case GravitationalLens.NSIE:    return (4.0 * Math.PI * Math.pow(this.params.velocityDispersion * 1000.0, 2)) / (SPEED_C * SPEED_C);
             default: return 0;
         }
     }
@@ -96,7 +96,16 @@ function GravitationalLens(model) {
     this.getParam2 = function() {
         switch (model) {
             case GravitationalLens.PLUMMER: return this.params.angularWidth * ANGLE_ARCSEC;
-            case GravitationalLens.NSIS:    return this.params.angularCoreRadius;
+            case GravitationalLens.NSIS:    return this.params.angularCoreRadius * ANGLE_ARCSEC;
+            case GravitationalLens.SIE:     return Math.sqrt(1 - Math.pow(this.params.ellipticity, 2));
+            case GravitationalLens.NSIE:    return this.params.angularCoreRadius * ANGLE_ARCSEC;
+            default: return 0;
+        }
+    }
+
+    this.getParam3 = function() {
+        switch (model) {
+            // case GravitationalLens.NSIS:    return this.params.angularCoreRadius * ANGLE_ARCSEC;
             case GravitationalLens.SIE:     return this.params.ellipticity;
             case GravitationalLens.NSIE:    return this.params.ellipticity;
             default: return 0;
@@ -187,8 +196,11 @@ function LensPlane(redshift) {
         var alphaBuffer = new EmscriptenBuffer(simulationSize * simulationSize * 2);
 
         for (let i = 0; i < this.lenses.length; i++) {
-            if (this.lenses[i].model == GravitationalLens.PLUMMER
-                || this.lenses[i].model == GravitationalLens.SIS)
+            // if (this.lenses[i].model == GravitationalLens.PLUMMER
+            //     || this.lenses[i].model == GravitationalLens.SIS
+            //     || this.lenses[i].model == GravitationalLens.SIE
+            //     || this.lenses[i].model == GravitationalLens.NSIE)
+            if (this.lenses[i].model != GravitationalLens.IMPORT)
                 continue;   // Plummer and SIS are calculated on the GPU
 
             let lens = this.lenses[i].createHandle(this.D_d);
@@ -217,8 +229,11 @@ function LensPlane(redshift) {
         var derivativeBuffer = new EmscriptenBuffer(simulationSize * simulationSize * 3);
 
         for (let i = 0; i < this.lenses.length; i++) {
-            if (this.lenses[i].model == GravitationalLens.PLUMMER
-                || this.lenses[i].model == GravitationalLens.SIS)
+            // if (this.lenses[i].model == GravitationalLens.PLUMMER
+            //     || this.lenses[i].model == GravitationalLens.SIS
+            //     || this.lenses[i].model == GravitationalLens.SIE
+            //     || this.lenses[i].model == GravitationalLens.NSIE)
+            if (this.lenses[i].model != GravitationalLens.IMPORT)
                 continue;   // Plummer and SIS are calculated on the GPU
 
             let lens = this.lenses[i].createHandle(this.D_d);
@@ -240,8 +255,11 @@ function LensPlane(redshift) {
 
     this.canUpdateImmediately = function() {
         for (let lens of this.lenses)
-            if (lens.model != GravitationalLens.PLUMMER
-                && lens.model != GravitationalLens.SIS)
+            // if (lens.model != GravitationalLens.PLUMMER
+            //     && lens.model != GravitationalLens.SIS
+            //     && lens.model != GravitationalLens.SIE
+            //     && lens.model != GravitationalLens.NSIE)
+            if (lens.model == GravitationalLens.IMPORT)
                 return false;
         return true;
     }
@@ -448,6 +466,7 @@ function Simulation(canvasID, size, angularRadius) {
             this.uniforms["u_lenses["+i+"].model"] = new Uniform(Uniform.INT, lens.model);
             this.uniforms["u_lenses["+i+"].param1"] = new Uniform(Uniform.FLOAT, lens.getParam1(this.lensPlane.D_d));
             this.uniforms["u_lenses["+i+"].param2"] = new Uniform(Uniform.FLOAT, lens.getParam2());
+            this.uniforms["u_lenses["+i+"].param3"] = new Uniform(Uniform.FLOAT, lens.getParam3());
         }
         for (let i = 0; i < this.sourcePlanes.length; i++) {
             let sourcePlane = this.sourcePlanes[i];

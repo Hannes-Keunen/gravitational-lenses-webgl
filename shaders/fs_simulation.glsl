@@ -17,11 +17,14 @@ struct lens {
     int model;
     float param1;
     float param2;
+    float param3;
 };
 
 const int PLUMMER   = 1;
 const int SIS       = 2;
+const int NSIS      = 3;
 const int SIE       = 4;
+const int NSIE      = 5;
 
 struct source_plane {
     float D_ds;     //< Distance to the lens, in Mpc
@@ -100,6 +103,65 @@ vec3 calculateLensAlphaDerivatives(vec2 theta, int index) {
         float axx = scale *   y2  / denom;
         float ayy = scale *   x2  / denom;
         float axy = scale * x * y / denom;
+        return vec3(axx, ayy, axy);
+    } else if (u_lenses[index].model == NSIS) {
+        float scale = u_lenses[index].param1;   // (4*PI*Sv^2) / c^2
+        float r = u_lenses[index].param2;
+        float f = 0.99;
+
+        vec2 scaledTheta = theta * ANGLE_ARCSEC;
+        float x = scaledTheta.x;
+        float y = scaledTheta.y;
+        float x2 = x * x;
+        float y2 = y * y;
+        float r2 = r * r;
+        float f2 = f * f;
+
+        float ff = sqrt(1.0 - f*f);
+        float factor = scale * sqrt(f) / ff;
+        float g = sqrt(f2*y2 + r2 + x2);
+        float denom = (f2*y2 + r2 + 2.0*f*r*g + f2*r2 + x2*f2) * g;
+
+        float axx = factor * ff * (f2*y2 + r2 + f*r*g) / denom;
+        float ayy = factor * f * ff * (f*r2 + f*x2 + r*g) / denom;
+        float axy = -factor * x * y * f2 * ff / denom;
+        return vec3(axx, ayy, axy);
+    } else if (u_lenses[index].model == SIE) {
+        float scale = u_lenses[index].param1;   // (4*PI*Sv^2) / c^2
+        float f = u_lenses[index].param3;
+
+        vec2 scaledTheta = theta * ANGLE_ARCSEC;
+        float x = scaledTheta.x;
+        float y = scaledTheta.y;
+        float x2 = x * x;
+        float y2 = y * y;
+        float factor = scale * sqrt(f) / ((x2 + y2)*sqrt(f*f*y2 + x2));
+        
+        float axx = factor * y2;
+        float ayy = factor * x2;
+        float axy = factor * x * y;
+        return vec3(axx, ayy, axy);
+    } else if (u_lenses[index].model == NSIE) {
+        float scale = u_lenses[index].param1;   // (4*PI*Sv^2) / c^2
+        float r = u_lenses[index].param2;
+        float f = u_lenses[index].param3;
+
+        vec2 scaledTheta = theta * ANGLE_ARCSEC;
+        float x = scaledTheta.x;
+        float y = scaledTheta.y;
+        float x2 = x * x;
+        float y2 = y * y;
+        float r2 = r * r;
+        float f2 = f * f;
+
+        float ff = sqrt(1.0 - f*f);
+        float factor = scale * sqrt(f) / ff;
+        float g = sqrt(f2*y2 + r2 + x2);
+        float denom = (f2*y2 + r2 + 2.0*f*r*g + f2*r2 + x2*f2) * g;
+
+        float axx = factor * ff * (f2*y2 + r2 + f*r*g) / denom;
+        float ayy = factor * f * ff * (f*r2 + f*x2 + r*g) / denom;
+        float axy = -factor * x * y * f2 * ff / denom;
         return vec3(axx, ayy, axy);
     } else {
         vec2 texcoord = angleToTexcoords(theta);
@@ -188,6 +250,51 @@ vec2 calculateLensAlpha(vec2 theta, int index) {
         float scale = u_lenses[index].param1;   // (4*PI*Sv^2) / c^2
         vec2 e = normalize(theta);
         return scale * e / ANGLE_ARCSEC;
+    } else if (u_lenses[index].model == NSIS) {
+        float scale = u_lenses[index].param1;   // (4*PI*Sv^2) / c^2
+        float r = u_lenses[index].param2;
+        float f = 0.99;
+
+        vec2 scaledTheta = theta * ANGLE_ARCSEC;
+        float x = scaledTheta.x;
+        float y = scaledTheta.y;
+        float x2 = x * x;
+        float y2 = y * y;
+        float r2 = r * r;
+        float f2 = f * f;
+
+        float ff = sqrt(1.0 - f*f);
+        float factor = scale * sqrt(f) / ff;
+        float xfrac = (x * ff) / (sqrt(f2*y2 + r2 + x2) + f*r);
+        float yfrac = (f * y * ff) / (f * sqrt(f2*y2 + r2 + x2) + r);
+        return vec2(factor * atanh(xfrac), factor * atan(yfrac)) / ANGLE_ARCSEC;
+    } else if (u_lenses[index].model == SIE) {
+        float scale = u_lenses[index].param1;   // (4*PI*Sv^2) / c^2
+        float ff = u_lenses[index].param2;      // sqrt(1 - f^2)
+        float f = u_lenses[index].param3;
+
+        float factor = scale * sqrt(f) / ff;
+        float x = factor * asinh((ff/f)*theta.x/length(theta));
+        float y = factor * asin(ff*theta.y/length(theta));
+        return vec2(x, y) / ANGLE_ARCSEC;
+    } else if (u_lenses[index].model == NSIE) {
+        float scale = u_lenses[index].param1;   // (4*PI*Sv^2) / c^2
+        float r = u_lenses[index].param2;
+        float f = u_lenses[index].param3;
+
+        vec2 scaledTheta = theta * ANGLE_ARCSEC;
+        float x = scaledTheta.x;
+        float y = scaledTheta.y;
+        float x2 = x * x;
+        float y2 = y * y;
+        float r2 = r * r;
+        float f2 = f * f;
+
+        float ff = sqrt(1.0 - f*f);
+        float factor = scale * sqrt(f) / ff;
+        float xfrac = (x * ff) / (sqrt(f2*y2 + r2 + x2) + f*r);
+        float yfrac = (f * y * ff) / (f * sqrt(f2*y2 + r2 + x2) + r);
+        return vec2(factor * atanh(xfrac), factor * atan(yfrac)) / ANGLE_ARCSEC;
     } else {
         return texture(u_alphaTextureArray, vec3(angleToTexcoords(theta), index)).xy;
     }
@@ -215,6 +322,7 @@ vec4 traceTheta(vec2 theta) {
         return vec4(0.0, 0.0, 1.0, 1.0);
 
     vec2 alpha = calculateAlpha(theta);
+    // return vec4(alpha, 0.0, 1.0);
     for (int i = 0; i < int(u_num_source_planes); i++) {
         vec2 beta = calculateBeta(theta, alpha, i);
         if (u_show_critical_lines == 1.0 && isOnCriticalLine(theta, i))     // critical line
