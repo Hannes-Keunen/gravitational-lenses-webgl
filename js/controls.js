@@ -72,13 +72,14 @@ function SourcePlaneControls(view, sourcePlane, simulation, removeCallback) {
 }
 
 /** Controls for parameters specific to the plummer model */
-function PlummerControls(view, params) {
+function PlummerControls(view, params, simulation) {
     this.massSlider             = view.querySelector("#plummer_mass_slider");
     this.massDisplay            = view.querySelector("#plummer_mass_value");
     this.angularWidthSlider     = view.querySelector("#plummer_angularwidth_slider");
     this.angularWidthDisplay    = view.querySelector("#plummer_angularwidth_value");
 
     this.params = params;
+    this.simulation = simulation;
 
     this.setCallbacks = function() {
         this.massSlider         .addEventListener("input", this.massCallback.bind(this));
@@ -95,11 +96,13 @@ function PlummerControls(view, params) {
     this.massCallback = function() {
         this.params.mass = parseInt(this.massSlider.value);
         this.massDisplay.innerHTML = this.params.mass.toExponential(2);
+        this.simulation.lensUpdated = true;
     }
 
     this.angularWidthCallback = function() {
         this.params.angularWidth = this.angularWidthSlider.value / 10;
         this.angularWidthDisplay.innerHTML = this.params.angularWidth.toFixed(1);
+        this.simulation.lensUpdated = true;
     }
 
     this.setCallbacks();
@@ -118,11 +121,12 @@ PlummerControls.CreateView = function() {
 }
 
 /** Controls for paramaters specific to the SIS model */
-function SISControls(view, params) {
+function SISControls(view, params, simulation) {
     this.velocityDispersionSlider   = view.querySelector("#sis_velocitydispersion_slider");
     this.velocityDispersionDisplay  = view.querySelector("#sis_velocitydispersion_value");
 
     this.params = params;
+    this.simulation = simulation;
 
     this.setCallbacks = function() {
         this.velocityDispersionSlider.addEventListener("input", this.velocityDispersionCallback.bind(this));
@@ -136,6 +140,7 @@ function SISControls(view, params) {
     this.velocityDispersionCallback = function() {
         this.params.velocityDispersion = this.velocityDispersionSlider.value;
         this.velocityDispersionDisplay.innerHTML = this.params.velocityDispersion;
+        this.simulation.lensUpdated = true;
     }
 
     this.setCallbacks();
@@ -150,7 +155,7 @@ SISControls.CreateView = function() {
 }
 
 /** Controls for paramaters specific to the NSIS model */
-function NSISControls(view, params) {
+function NSISControls(view, params, simulation) {
     this.view = document.getElementById("nsis_controls");
     this.velocityDispersionSlider   = view.querySelector("#nsis_velocitydispersion_slider");
     this.velocityDispersionDisplay  = view.querySelector("#nsis_velocitydispersion_value");
@@ -158,6 +163,7 @@ function NSISControls(view, params) {
     this.angularCoreRadiusDisplay   = view.querySelector("#nsis_angularcoreradius_value");
 
     this.params = params;
+    this.simulation = simulation;
 
     this.setCallbacks = function() {
         this.velocityDispersionSlider   .addEventListener("input", this.velocityDispersionCallback.bind(this));
@@ -174,11 +180,13 @@ function NSISControls(view, params) {
     this.velocityDispersionCallback = function() {
         this.params.velocityDispersion = this.velocityDispersionSlider.value;
         this.velocityDispersionDisplay.innerHTML = this.params.velocityDispersion;
+        this.simulation.lensUpdated = true;
     }
 
     this.angularCoreRadiusCallback = function() {
         this.params.angularCoreRadius = this.angularCoreRadiusSlider.value / 10;
         this.angularCoreRadiusDisplay.innerHTML = this.params.angularCoreRadius.toFixed(1);
+        this.simulation.lensUpdated = true;
     }
 
     this.setCallbacks();
@@ -197,13 +205,14 @@ NSISControls.CreateView = function() {
 }
 
 /** Controls for paramaters specific to the SIE model */
-function SIEControls(view, params) {
+function SIEControls(view, params, simulation) {
     this.velocityDispersionSlider   = view.querySelector("#sie_velocitydispersion_slider");
     this.velocityDispersionDisplay  = view.querySelector("#sie_velocitydispersion_value");
     this.ellipticitySlider          = view.querySelector("#sie_ellipticity_slider");
     this.ellipticityDisplay         = view.querySelector("#sie_ellipticity_value");
 
     this.params = params;
+    this.simulation = simulation;
 
     this.setCallbacks = function() {
         this.velocityDispersionSlider   .addEventListener("input", this.velocityDispersionCallback.bind(this));
@@ -220,11 +229,13 @@ function SIEControls(view, params) {
     this.velocityDispersionCallback = function() {
         this.params.velocityDispersion = this.velocityDispersionSlider.value;
         this.velocityDispersionDisplay.innerHTML = this.params.velocityDispersion;
+        this.simulation.lensUpdated = true;
     }
 
     this.ellipticityCallback = function() {
         this.params.ellipticity = this.ellipticitySlider.value / 100;
         this.ellipticityDisplay.innerHTML = this.ellipticitySlider.value;
+        this.simulation.lensUpdated = true;
     }
 
     this.setCallbacks();
@@ -243,7 +254,7 @@ SIEControls.CreateView = function() {
 }
 
 /** Controls for paramaters specific to the NSIE model */
-function NSIEControls(view, params) {
+function NSIEControls(view, params, simulation) {
     this.velocityDispersionSlider   = view.querySelector("#nsie_velocitydispersion_slider");
     this.velocityDispersionDisplay  = view.querySelector("#nsie_velocitydispersion_value");
     this.ellipticitySlider          = view.querySelector("#nsie_ellipticity_slider");
@@ -252,6 +263,7 @@ function NSIEControls(view, params) {
     this.angularCoreRadiusDisplay   = view.querySelector("#nsie_angularcoreradius_value");
 
     this.params = params;
+    this.simulation = simulation;
 
     this.setCallbacks = function() {
         this.velocityDispersionSlider   .addEventListener("input", this.velocityDispersionCallback.bind(this));
@@ -271,16 +283,19 @@ function NSIEControls(view, params) {
     this.velocityDispersionCallback = function() {
         this.params.velocityDispersion = this.velocityDispersionSlider.value;
         this.velocityDispersionDisplay.innerHTML = this.params.velocityDispersion;
+        this.simulation.lensUpdated = true;
     }
 
     this.ellipticityCallback = function() {
         this.params.ellipticity = this.ellipticitySlider.value / 100;
         this.ellipticityDisplay.innerHTML = this.ellipticitySlider.value;
+        this.simulation.lensUpdated = true;
     }
 
     this.angularCoreRadiusCallback = function() {
         this.params.angularCoreRadius = this.angularCoreRadiusSlider.value / 10;
         this.angularCoreRadiusDisplay.innerHTML = this.params.angularCoreRadius.toFixed(1);
+        this.simulation.lensUpdated = true;
     }
 
     this.setCallbacks();
@@ -331,11 +346,12 @@ LensImportControls.CreateView = function() {
 }
 
 /** Controls for paramaters specific to the mass sheet model */
-function MassSheetControls(view, params) {
+function MassSheetControls(view, params, simulation) {
     this.densitySlider  = view.querySelector("#masssheet_density_slider");
     this.densityDisplay = view.querySelector("#masssheet_density_value");
 
     this.params = params;
+    this.simulation = simulation;
 
     this.setCallbacks = function() {
         this.densitySlider.addEventListener("input", this.densityCallback.bind(this));
@@ -349,6 +365,7 @@ function MassSheetControls(view, params) {
     this.densityCallback = function() {
         this.params.density = this.densitySlider.value;
         this.densityDisplay.innerHTML = this.params.density;
+        this.simulation.lensUpdated = true;
     }
 
     this.setCallbacks();
@@ -384,27 +401,27 @@ function LensControls(view, lens, simulation, removeCallback) {
     switch (this.lens.model) {
         case GravitationalLens.PLUMMER:
             this.modelParamsContainer.innerHTML = PlummerControls.CreateView();
-            this.parameterControls = new PlummerControls(this.modelParamsContainer, this.lens.params);
+            this.parameterControls = new PlummerControls(this.modelParamsContainer, this.lens.params, simulation);
             break;
         case GravitationalLens.SIS:
             this.modelParamsContainer.innerHTML = SISControls.CreateView();
-            this.parameterControls = new SISControls(this.modelParamsContainer, this.lens.params);
+            this.parameterControls = new SISControls(this.modelParamsContainer, this.lens.params, simulation);
             break;
         case GravitationalLens.NSIS:
             this.modelParamsContainer.innerHTML = NSISControls.CreateView();
-            this.parameterControls = new NSISControls(this.modelParamsContainer, this.lens.params);
+            this.parameterControls = new NSISControls(this.modelParamsContainer, this.lens.params, simulation);
             break;
         case GravitationalLens.SIE:
             this.modelParamsContainer.innerHTML = SIEControls.CreateView();
-            this.parameterControls = new SIEControls(this.modelParamsContainer, this.lens.params);
+            this.parameterControls = new SIEControls(this.modelParamsContainer, this.lens.params, simulation);
             break;
         case GravitationalLens.NSIE:
             this.modelParamsContainer.innerHTML = NSIEControls.CreateView();
-            this.parameterControls = new NSIEControls(this.modelParamsContainer, this.lens.params);
+            this.parameterControls = new NSIEControls(this.modelParamsContainer, this.lens.params, simulation);
             break;
         case GravitationalLens.IMPORT:
             this.modelParamsContainer.innerHTML = LensImportControls.CreateView();
-            this.parameterControls = new LensImportControls(this.modelParamsContainer, this.lens.params);
+            this.parameterControls = new LensImportControls(this.modelParamsContainer, this.lens.params, simulation);
             break;
         default: throw new Error("Unknown lens model: " + this.lens.model);
     }
@@ -432,21 +449,25 @@ function LensControls(view, lens, simulation, removeCallback) {
     this.strengthCallback = function() {
         this.lens.strength = this.strengthSlider.value / 10;
         this.strengthDisplay.innerHTML = this.lens.strength;
+        this.simulation.lensUpdated = true;
     }
 
     this.translationXCallback = function() {
         this.lens.translationX = this.translationXSlider.value / 10;
         this.translationXDisplay.innerHTML = this.lens.translationX;
+        this.simulation.lensUpdated = true;
     }
 
     this.translationYCallback = function() {
         this.lens.translationY = this.translationYSlider.value / 10;
         this.translationYDisplay.innerHTML = this.lens.translationY;
+        this.simulation.lensUpdated = true;
     }
 
     this.angleCallback = function() {
         this.lens.angle = this.angleSlider.value;
         this.angleDisplay.innerHTML = this.lens.angle;
+        this.simulation.lensUpdated = true;
     }
 
     this.deleteCallback = function() {
@@ -532,6 +553,7 @@ function Controls(sim) {
     this.angularRadiusCallback = function() {
         this.simulation.setAngularRadius(this.angularRadiusSlider.value / 2.0);
         this.angularRadiusDisplay.innerHTML = this.angularRadiusSlider.value;
+        this.simulation.lensUpdated = true;
     }
 
     this.sourcePlaneToggleCallback = function() {

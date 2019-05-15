@@ -196,12 +196,8 @@ function LensPlane(redshift) {
         var alphaBuffer = new EmscriptenBuffer(simulationSize * simulationSize * 2);
 
         for (let i = 0; i < this.lenses.length; i++) {
-            // if (this.lenses[i].model == GravitationalLens.PLUMMER
-            //     || this.lenses[i].model == GravitationalLens.SIS
-            //     || this.lenses[i].model == GravitationalLens.SIE
-            //     || this.lenses[i].model == GravitationalLens.NSIE)
             if (this.lenses[i].model != GravitationalLens.IMPORT)
-                continue;   // Plummer and SIS are calculated on the GPU
+                continue;
 
             let lens = this.lenses[i].createHandle(this.D_d);
             for (let y = 0; y < simulationSize; y++) {
@@ -229,12 +225,8 @@ function LensPlane(redshift) {
         var derivativeBuffer = new EmscriptenBuffer(simulationSize * simulationSize * 3);
 
         for (let i = 0; i < this.lenses.length; i++) {
-            // if (this.lenses[i].model == GravitationalLens.PLUMMER
-            //     || this.lenses[i].model == GravitationalLens.SIS
-            //     || this.lenses[i].model == GravitationalLens.SIE
-            //     || this.lenses[i].model == GravitationalLens.NSIE)
             if (this.lenses[i].model != GravitationalLens.IMPORT)
-                continue;   // Plummer and SIS are calculated on the GPU
+                continue;
 
             let lens = this.lenses[i].createHandle(this.D_d);
             for (let y = 0; y < simulationSize; y++) {
@@ -255,10 +247,6 @@ function LensPlane(redshift) {
 
     this.canUpdateImmediately = function() {
         for (let lens of this.lenses)
-            // if (lens.model != GravitationalLens.PLUMMER
-            //     && lens.model != GravitationalLens.SIS
-            //     && lens.model != GravitationalLens.SIE
-            //     && lens.model != GravitationalLens.NSIE)
             if (lens.model == GravitationalLens.IMPORT)
                 return false;
         return true;
@@ -299,6 +287,7 @@ function Simulation(canvasID, size, angularRadius) {
     this.causticsTexture;
     this.uniforms = {};
     this.started = false;
+    this.lensUpdated = true;
 
     /** Toggle flags */
     this.showSourcePlane    = true;
@@ -373,11 +362,14 @@ function Simulation(canvasID, size, angularRadius) {
         this.angularRadius = this.changedAngularRadius;
         for (let sourcePlane of this.sourcePlanes)
             sourcePlane.setRedshiftValue(sourcePlane.redshift, this.lensPlane.redshift);
-        this.lensPlane.createAlphaTextures(this.size, this.angularRadius, this.helper);
-        this.lensPlane.createAlphaDerivativeTextures(this.size, this.angularRadius, this.helper)
-        if (this.showCaustics && !this.realtimeCaustics) {
+        // if (!this.lensPlane.canUpdateImmediately()) {
+            this.lensPlane.createAlphaTextures(this.size, this.angularRadius, this.helper);
+            this.lensPlane.createAlphaDerivativeTextures(this.size, this.angularRadius, this.helper)
+        // }
+        if (this.showCaustics) {
             this.updateUniforms();
             this.createCausticsTexture();
+            this.lensUpdated = false;
         }
         this.started = true;
     }
@@ -435,8 +427,10 @@ function Simulation(canvasID, size, angularRadius) {
 
     this.update = function() {
         this.updateUniforms();
-        if (this.showCaustics && this.realtimeCaustics)
+        if (this.showCaustics && this.lensUpdated) {
             this.createCausticsTexture();
+            this.lensUpdated = false;
+        }
         var textures = {
             u_alphaTextureArray: this.lensPlane.alphaTextureArray,
             u_derivativeTextureArray: this.lensPlane.derivativeTextureArray,

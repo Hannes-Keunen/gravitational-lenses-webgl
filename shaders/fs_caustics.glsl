@@ -221,9 +221,9 @@ vec2 calculateLensAlpha(vec2 theta, int index) {
         vec2 e = normalize(theta);
         return scale * e / ANGLE_ARCSEC;
     } else if (u_lenses[index].model == NSIS) {
+        // NOTE: this is an approximation using NSIE with f = 0.99
         float scale = u_lenses[index].param1;   // (4*PI*Sv^2) / c^2
         float r = u_lenses[index].param2;
-        float f = 0.99;
 
         vec2 scaledTheta = theta * ANGLE_ARCSEC;
         float x = scaledTheta.x;
@@ -231,13 +231,10 @@ vec2 calculateLensAlpha(vec2 theta, int index) {
         float x2 = x * x;
         float y2 = y * y;
         float r2 = r * r;
-        float f2 = f * f;
 
-        float ff = sqrt(1.0 - f*f);
-        float factor = scale * sqrt(f) / ff;
-        float xfrac = (x * ff) / (sqrt(f2*y2 + r2 + x2) + f*r);
-        float yfrac = (f * y * ff) / (f * sqrt(f2*y2 + r2 + x2) + r);
-        return vec2(factor * atanh(xfrac), factor * atan(yfrac)) / ANGLE_ARCSEC;
+        float denom = x2 + y2;
+        float factor = scale * (sqrt(x2 + y2 + r2) - r) / denom;
+        return vec2(factor * x, factor * y) / ANGLE_ARCSEC;
     } else if (u_lenses[index].model == SIE) {
         float scale = u_lenses[index].param1;   // (4*PI*Sv^2) / c^2
         float ff = u_lenses[index].param2;      // sqrt(1 - f^2)
