@@ -295,7 +295,6 @@ function Simulation(canvasID, size, angularRadius) {
     this.showDensity        = true;
     this.showCriticalLines  = true;
     this.showCaustics       = true;
-    this.realtimeCaustics   = true;
 
     this.lens;                      /** GravitationalLens */
     this.sourcePlanes = [];         /** SourcePlane[] */

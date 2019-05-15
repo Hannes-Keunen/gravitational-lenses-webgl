@@ -489,7 +489,6 @@ function Controls(sim) {
     this.densityToggle          = document.getElementById("density_toggle");
     this.criticalLineToggle     = document.getElementById("critical_line_toggle");
     this.causticsToggle         = document.getElementById("caustics_toggle");
-    this.causticsRealtimeToggle = document.getElementById("caustics_realtime_toggle");
     this.sourcePlaneList        = document.getElementById("source_plane_list");
 
     this.lensRedshiftSlider     = document.getElementById("lens_redshift_slider");
@@ -518,7 +517,6 @@ function Controls(sim) {
         this.densityToggle          .addEventListener("change", this.densityToggleCallback.bind(this));
         this.criticalLineToggle     .addEventListener("change", this.criticalLineToggleCallback.bind(this));
         this.causticsToggle         .addEventListener("change", this.causticsToggleCallback.bind(this));
-        this.causticsRealtimeToggle .addEventListener("change", this.causticsRealtimeToggleCallback.bind(this));
         this.lensRedshiftSlider     .addEventListener("input",  this.lensRedshiftCallback.bind(this));
         this.addLensButton          .addEventListener("click",  this.addLensCallback.bind(this));
         this.addSourcePlaneButton   .addEventListener("click",  this.addSourcePlane.bind(this));
@@ -574,11 +572,6 @@ function Controls(sim) {
 
     this.causticsToggleCallback = function() {
         this.simulation.showCaustics = this.causticsToggle.checked;
-        this.causticsRealtimeToggle.disabled = !this.causticsToggle.checked;
-    }
-
-    this.causticsRealtimeToggleCallback = function() {
-        this.simulation.realtimeCaustics = this.causticsRealtimeToggle.checked;
     }
 
     this.lensRedshiftCallback = function() {
@@ -626,11 +619,23 @@ function Controls(sim) {
 
         // Add a controller to the view
         this.lensControls.push(new LensControls(row, lens, this.simulation, this.lensRemoveCallback.bind(this)));
+
+        // disable start button if not needed
+        if (this.simulation.lensPlane.canUpdateImmediately())
+            this.startSimulationButton.disabled = true;
+        else
+            this.startSimulationButton.disabled = false;
     }
 
     this.lensRemoveCallback = function(index) {
         this.lensList.removeChild(this.lensList.childNodes[index]);
         this.lensControls.splice(index, 1);
+
+        // disable start button if not needed
+        if (this.simulation.lensPlane.canUpdateImmediately())
+            this.startSimulationButton.disabled = true;
+        else
+            this.startSimulationButton.disabled = false;
     }
 
     this.addSourcePlane = function() {
@@ -676,7 +681,6 @@ function Controls(sim) {
     }
 
     this.emscriptenCallback = function() {
-        this.startSimulationButton.disabled = false;
         this.exportButton.disabled = false;
     }
 
