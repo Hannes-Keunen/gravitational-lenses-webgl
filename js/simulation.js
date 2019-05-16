@@ -159,7 +159,7 @@ function CompositeLens(lenses, D_d) {
         this.params = createCompositeLensParams();
         for (let lens of lenses) {
             let handle = lens.createHandle(D_d);
-            addLensToComposite(this.params, lens.strength, lens.translationX, lens.translationY, lens.angle, handle);
+            addLensToComposite(this.params, lens.strength, lens.translationX*ANGLE_ARCSEC, lens.translationY*ANGLE_ARCSEC, lens.angle, handle);
             this.lenses.push(handle);
         }
         this.lens = createCompositeLens(D_d, this.params);

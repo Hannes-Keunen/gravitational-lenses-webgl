@@ -271,9 +271,9 @@ vec2 calculateAlpha(vec2 theta) {
     for (int i = 0; i < int(u_num_lenses); i++) {
         vec2 theta0 = transformTheta(theta, u_lenses[i]);
         vec2 alpha = calculateLensAlpha(theta0, i);
-        alpha *= u_lenses[i].strength;
         alpha = vec2(alpha.x*cos(u_lenses[i].angle) - alpha.y*sin(u_lenses[i].angle),
                      alpha.x*sin(u_lenses[i].angle) + alpha.y*cos(u_lenses[i].angle));
+        alpha *= u_lenses[i].strength;
         sum += alpha;
     }
     return sum;
