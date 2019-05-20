@@ -188,61 +188,73 @@ function LensPlane(redshift) {
     }
 
     this.createAlphaTextures = function(simulationSize, angularRadius, glhelper) {
-        if (this.alphaTextureArray != undefined)
-            this.alphaTextureArray.destroy();
-        this.alphaTextureArray = new TextureArray(
-            glhelper.gl, this.lenses.length, simulationSize, simulationSize, glhelper.gl.RG32F, glhelper.gl.RG, glhelper.gl.FLOAT);
+        if (this.canUpdateImmediately()) {
+            // hack: even if this texture is unused, WebGL still seems to expect a valid
+            // texture to be present, so we need to create an empty (or 1x1x1) texture.
+            this.alphaTextureArray = new TextureArray(glhelper.gl, 1, 1, 1, glhelper.gl.R8);
+        } else {
+            if (this.alphaTextureArray != undefined)
+                this.alphaTextureArray.destroy();
+            this.alphaTextureArray = new TextureArray(
+                glhelper.gl, this.lenses.length, simulationSize, simulationSize, glhelper.gl.RG32F, glhelper.gl.RG, glhelper.gl.FLOAT);
 
-        var alphaBuffer = new EmscriptenBuffer(simulationSize * simulationSize * 2);
+            var alphaBuffer = new EmscriptenBuffer(simulationSize * simulationSize * 2);
 
-        for (let i = 0; i < this.lenses.length; i++) {
-            if (this.lenses[i].model != GravitationalLens.IMPORT)
-                continue;
+            for (let i = 0; i < this.lenses.length; i++) {
+                if (this.lenses[i].model != GravitationalLens.IMPORT)
+                    continue;
 
-            let lens = this.lenses[i].createHandle(this.D_d);
-            for (let y = 0; y < simulationSize; y++) {
-                let thetaY = toAngular(y, simulationSize, angularRadius);
-                for (let x = 0; x < simulationSize; x++) {
-                    let thetaX = toAngular(x, simulationSize, angularRadius);
-                    calculateAlphaVectors(
-                        lens, thetaX*ANGLE_ARCSEC, thetaY*ANGLE_ARCSEC,
-                        alphaBuffer.asPointer(), (x + simulationSize * y) * 2);
+                let lens = this.lenses[i].createHandle(this.D_d);
+                for (let y = 0; y < simulationSize; y++) {
+                    let thetaY = toAngular(y, simulationSize, angularRadius);
+                    for (let x = 0; x < simulationSize; x++) {
+                        let thetaX = toAngular(x, simulationSize, angularRadius);
+                        calculateAlphaVectors(
+                            lens, thetaX*ANGLE_ARCSEC, thetaY*ANGLE_ARCSEC,
+                            alphaBuffer.asPointer(), (x + simulationSize * y) * 2);
+                    }
                 }
+                destroyLens(lens);
+                this.alphaTextureArray.update(i, alphaBuffer.asFloat32Array());
             }
-            destroyLens(lens);
-            this.alphaTextureArray.update(i, alphaBuffer.asFloat32Array());
-        }
 
-        alphaBuffer.destroy();
+            alphaBuffer.destroy();
+        }
     }
 
     this.createAlphaDerivativeTextures = function(simulationSize, angularRadius, glhelper) {
-        if (this.derivativeTextureArray != undefined)
-            this.derivativeTextureArray.destroy();
-        this.derivativeTextureArray = new TextureArray(
-            glhelper.gl, this.lenses.length, simulationSize, simulationSize, glhelper.gl.RGB32F, glhelper.gl.RGB, glhelper.gl.FLOAT);
+        if (this.canUpdateImmediately()) {
+            // hack: even if this texture is unused, WebGL still seems to expect a valid
+            // texture to be present, so we need to create an empty (or 1x1x1) texture.
+            this.derivativeTextureArray = new TextureArray(glhelper.gl, 1, 1, 1, glhelper.gl.R8);
+        } else {
+            if (this.derivativeTextureArray != undefined)
+                this.derivativeTextureArray.destroy();
+            this.derivativeTextureArray = new TextureArray(
+                glhelper.gl, this.lenses.length, simulationSize, simulationSize, glhelper.gl.RGB32F, glhelper.gl.RGB, glhelper.gl.FLOAT);
 
-        var derivativeBuffer = new EmscriptenBuffer(simulationSize * simulationSize * 3);
+            var derivativeBuffer = new EmscriptenBuffer(simulationSize * simulationSize * 3);
 
-        for (let i = 0; i < this.lenses.length; i++) {
-            if (this.lenses[i].model != GravitationalLens.IMPORT)
-                continue;
+            for (let i = 0; i < this.lenses.length; i++) {
+                if (this.lenses[i].model != GravitationalLens.IMPORT)
+                    continue;
 
-            let lens = this.lenses[i].createHandle(this.D_d);
-            for (let y = 0; y < simulationSize; y++) {
-                let thetaY = toAngular(y, simulationSize, angularRadius);
-                for (let x = 0; x < simulationSize; x++) {
-                    let thetaX = toAngular(x, simulationSize, angularRadius);
-                    calculateAlphaVectorDerivatives(
-                        lens, thetaX*ANGLE_ARCSEC, thetaY*ANGLE_ARCSEC,
-                        derivativeBuffer.asPointer(), (x + simulationSize * y) * 3);
+                let lens = this.lenses[i].createHandle(this.D_d);
+                for (let y = 0; y < simulationSize; y++) {
+                    let thetaY = toAngular(y, simulationSize, angularRadius);
+                    for (let x = 0; x < simulationSize; x++) {
+                        let thetaX = toAngular(x, simulationSize, angularRadius);
+                        calculateAlphaVectorDerivatives(
+                            lens, thetaX*ANGLE_ARCSEC, thetaY*ANGLE_ARCSEC,
+                            derivativeBuffer.asPointer(), (x + simulationSize * y) * 3);
+                    }
                 }
+                destroyLens(lens);
+                this.derivativeTextureArray.update(i, derivativeBuffer.asFloat32Array());
             }
-            destroyLens(lens);
-            this.derivativeTextureArray.update(i, derivativeBuffer.asFloat32Array());
-        }
 
-        derivativeBuffer.destroy();
+            derivativeBuffer.destroy();
+        }
     }
 
     this.canUpdateImmediately = function() {
@@ -256,7 +268,12 @@ function LensPlane(redshift) {
         const filename = "lens.lensdata";
         if (this.lenses.length == 0) {
             return;
-        } else if (this.lenses.length == 1) {
+        } else if (this.lenses.length == 1
+            && this.lenses[0].angle == 0
+            && this.lenses[0].strength == 0
+            && this.lenses[0].translationX == 0
+            && this.lenses[0].translationY == 0
+        ) {
             let lens = this.lenses[0].createHandle(this.D_d);
             saveLensToFile(lens, filename);
             destroyLens(lens);
@@ -320,6 +337,7 @@ function Simulation(canvasID, size, angularRadius) {
         this.uniforms["u_enabled"] = new Uniform(Uniform.FLOAT, 0);
         this.uniforms["u_D_d"] = new Uniform(Uniform.FLOAT, this.lensPlane.D_d);
 
+        this.uniforms["u_useTexture_arrays"] = new Uniform(Uniform.FLOAT, this.lensPlane.canUpdateImmediately() ? 0 : 1);
         this.uniforms["u_show_source_plane"] = new Uniform(Uniform.FLOAT, this.showSourcePlane);
         this.uniforms["u_show_image_plane"] = new Uniform(Uniform.FLOAT, this.showImagePlane);
         this.uniforms["u_show_density"] = new Uniform(Uniform.FLOAT, this.showDensity);
@@ -361,10 +379,8 @@ function Simulation(canvasID, size, angularRadius) {
         this.angularRadius = this.changedAngularRadius;
         for (let sourcePlane of this.sourcePlanes)
             sourcePlane.setRedshiftValue(sourcePlane.redshift, this.lensPlane.redshift);
-        // if (!this.lensPlane.canUpdateImmediately()) {
-            this.lensPlane.createAlphaTextures(this.size, this.angularRadius, this.helper);
-            this.lensPlane.createAlphaDerivativeTextures(this.size, this.angularRadius, this.helper)
-        // }
+        this.lensPlane.createAlphaTextures(this.size, this.angularRadius, this.helper);
+        this.lensPlane.createAlphaDerivativeTextures(this.size, this.angularRadius, this.helper)
         if (this.showCaustics) {
             this.updateUniforms();
             this.createCausticsTexture();
@@ -406,7 +422,7 @@ function Simulation(canvasID, size, angularRadius) {
             u_alphaTextureArray: this.lensPlane.alphaTextureArray,
             u_derivativeTextureArray: this.lensPlane.derivativeTextureArray,
         };
-        this.helper.runProgram(this.causticsShader, textures, this.uniforms, this.causticsFramebuffer.framebuffer);
+        this.helper.runProgram(this.causticsShader, textures, this.uniforms, this.causticsFramebuffer.framebuffer, false);
 
         var width = this.causticsFramebuffer.width;
         var height = this.causticsFramebuffer.height;
@@ -435,7 +451,7 @@ function Simulation(canvasID, size, angularRadius) {
             u_derivativeTextureArray: this.lensPlane.derivativeTextureArray,
             u_causticsTexture: this.causticsTexture,
         };
-        this.helper.runProgram(this.simulationShader, textures, this.uniforms, null);
+        this.helper.runProgram(this.simulationShader, textures, this.uniforms);
     }
 
     this.updateUniforms = function() {

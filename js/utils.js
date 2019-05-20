@@ -121,7 +121,7 @@ Uniform.VEC2 = 2;
 Uniform.INT = 3;
 
 /** Helper for WebGL texture arrays. */
-function TextureArray(gl, length, width, height, internalFormat, format, type, data = []) {
+function TextureArray(gl, length, width, height, internalFormat = gl.RGBA, format = gl.RGBA, type = gl.UNSIGNED_BYTE) {
     this.target = gl.TEXTURE_2D_ARRAY;
     this.texture;
 
@@ -290,11 +290,13 @@ function GLHelper(gl) {
      * Runs a shader program and stores it's output in the given framebuffer,
      * or the default framebuffer if the framebuffer is null.
      */
-    this.runProgram = function(program, textures, uniforms, framebuffer) {
+    this.runProgram = function(program, textures, uniforms, framebuffer = null, clear = true) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
-        // gl.clearColor(0.0, 0.0, 0.0, 1.0);
-        // gl.clear(gl.COLOR_BUFFER_BIT);
+        if (clear) {
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+        }
 
         gl.useProgram(program.program);
 
