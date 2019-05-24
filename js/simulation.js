@@ -288,6 +288,19 @@ function LensPlane(redshift) {
         FS.unlink(filename);
     }
 
+    this.save = function() {
+        const filename = "lens.json";
+        const data = {
+            redshift: this.redshift,
+            lenses: this.lenses,
+        };
+        downloadData(JSON.stringify(data), filename, "application/json");
+    }
+
+    this.clear = function() {
+        this.lenses = [];
+    }
+
     this.setRedshiftValue(redshift);
 }
 
@@ -391,6 +404,8 @@ function Simulation(canvasID, size, angularRadius) {
 
     this.addSourcePlane = function(sourcePlane) {
         this.sourcePlanes.push(sourcePlane);
+        if (!this.started && this.lensPlane.canUpdateImmediately())
+            this.start();
     }
 
     this.removeSourcePlane = function(sourcePlane) {

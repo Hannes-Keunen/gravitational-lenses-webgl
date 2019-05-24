@@ -479,6 +479,32 @@ function LensControls(view, lens, simulation, removeCallback) {
     this.initDefaults();
 }
 
+LensControls.CreateView = function() {
+    var row = document.createElement("li");
+    row.className = "controls-list-item";
+    row.innerHTML =
+        `Model: <span id="lens_model_name"></span><br>
+         Strength: <span id="lens_strength_value"></span>
+         <div class="slider-container">
+             <input type="range" min="1" max="100" id="lens_strength_slider">
+         </div>
+         Translation x: <span id="lens_translation_x_value"></span>"
+         <div class="slider-container">
+             <input type="range" min="-300" max="300" id="lens_translation_x_slider">
+         </div>
+         Translation y: <span id="lens_translation_y_value"></span>"
+         <div class="slider-container">
+             <input type="range" min="-300" max="300" id="lens_translation_y_slider">
+         </div>
+         Angle: <span id="lens_angle_value"></span>°
+         <div class="slider-container">
+             <input type="range" min="-90" max="90" id="lens_angle_slider">
+         </div>
+         <div id="lens_model_params"></div>
+         <button id="lens_delete">Delete</button>`
+    return row;
+}
+
 /** Controls for the whole simulation. */
 function Controls(sim) {
     this.sizePicker             = document.getElementById("size_picker");
@@ -494,6 +520,9 @@ function Controls(sim) {
     this.lensRedshiftSlider     = document.getElementById("lens_redshift_slider");
     this.lensRedshiftDisplay    = document.getElementById("lens_redshift_value");
     this.startSimulationButton  = document.getElementById("start_simulation");
+    this.saveButton             = document.getElementById("save");
+    this.openButton             = document.getElementById("open");
+    this.openFileInput          = document.getElementById("open_file");
     this.exportButton           = document.getElementById("export");
 
     this.lensModelPicker        = document.getElementById("lens_model_picker");
@@ -521,6 +550,9 @@ function Controls(sim) {
         this.addLensButton          .addEventListener("click",  this.addLensCallback.bind(this));
         this.addSourcePlaneButton   .addEventListener("click",  this.addSourcePlane.bind(this));
         this.startSimulationButton  .addEventListener("click",  this.startSimulationCallback.bind(this));
+        this.saveButton             .addEventListener("click",  this.saveCallback.bind(this));
+        this.openButton             .addEventListener("click",  this.openCallback.bind(this));
+        this.openFileInput          .addEventListener("input",  this.openFileCallback.bind(this));
         this.exportButton           .addEventListener("click",  this.exportCallback.bind(this));
 
         window.onresize = this.resizeCallback.bind(this);
@@ -583,6 +615,47 @@ function Controls(sim) {
         sim.start();
     }
 
+    this.saveCallback = function() {
+        sim.lensPlane.save();
+    }
+
+    this.openCallback = function() {
+        this.openFileInput.click();
+    }
+
+    this.openFileCallback = function() {
+        var file = this.openFileInput.files[0];
+        var reader = new FileReader;
+        reader.onloadend = function() {
+            const lensPlane = JSON.parse(reader.result);
+
+            // reset the lens plane
+            this.simulation.lensPlane.clear();
+            this.simulation.lensPlane.setRedshiftValue(lensPlane.redshift);
+
+            // remove old lens controls
+            this.lensControls = [];
+            while(this.lensList.firstChild)
+            this.lensList.removeChild(this.lensList.firstChild);
+
+            for (let lens of lensPlane.lenses) {
+                // create lenses
+                let newLens = new GravitationalLens(lens.model);
+                newLens.strength = lens.strength;
+                newLens.translationX = lens.translationX;
+                newLens.translationY = lens.translationY;
+                newLens.params = lens.params;
+                this.simulation.addLens(newLens);
+
+                // add controls
+                let row = LensControls.CreateView();
+                this.lensList.appendChild(row);
+                this.lensControls.push(new LensControls(row, newLens, this.simulation, this.lensRemoveCallback.bind(this)));
+            }
+        }.bind(this);
+        reader.readAsText(file);
+    }
+
     this.exportCallback = function() {
         sim.lensPlane.export();
     }
@@ -593,28 +666,7 @@ function Controls(sim) {
         this.simulation.addLens(lens);
 
         // Create the controls view
-        var row = document.createElement("li");
-        row.className = "controls-list-item";
-        row.innerHTML =
-            `Model: <span id="lens_model_name"></span><br>
-             Strength: <span id="lens_strength_value"></span>
-             <div class="slider-container">
-                 <input type="range" min="1" max="100" id="lens_strength_slider">
-             </div>
-             Translation x: <span id="lens_translation_x_value"></span>"
-             <div class="slider-container">
-                 <input type="range" min="-300" max="300" id="lens_translation_x_slider">
-             </div>
-             Translation y: <span id="lens_translation_y_value"></span>"
-             <div class="slider-container">
-                 <input type="range" min="-300" max="300" id="lens_translation_y_slider">
-             </div>
-             Angle: <span id="lens_angle_value"></span>°
-             <div class="slider-container">
-                 <input type="range" min="-90" max="90" id="lens_angle_slider">
-             </div>
-             <div id="lens_model_params"></div>
-             <button id="lens_delete">Delete</button>`
+        var row = LensControls.CreateView();
         this.lensList.appendChild(row);
 
         // Add a controller to the view
