@@ -25,6 +25,7 @@ const int SIS       = 2;
 const int NSIS      = 3;
 const int SIE       = 4;
 const int NSIE      = 5;
+const int IMPORT    = 7;
 
 struct source_plane {
     float D_ds;     //< Distance to the lens, in Mpc
@@ -169,6 +170,10 @@ vec3 calculateAlphaDerivatives(vec2 theta, vec2 offset) {
 		float csa = ca*sa;
 
         vec2 theta0 = transformTheta(theta, u_lenses[i]);
+        if (u_lenses[i].model == IMPORT &&  // prevent sampling outside alpha texture
+            (theta0.x > u_angularRadius || theta0.x < -u_angularRadius
+            || theta0.y > u_angularRadius || theta0.y < -u_angularRadius))
+            return vec3(0.0, 0.0, 0.0);
         vec3 derivatives = calculateLensAlphaDerivatives(theta0 + offset * u_angularRadius, i);
 
 		float axx0 = derivatives.x * u_lenses[i].strength;
@@ -270,6 +275,10 @@ vec2 calculateAlpha(vec2 theta) {
     vec2 sum = vec2(0.0, 0.0);
     for (int i = 0; i < int(u_num_lenses); i++) {
         vec2 theta0 = transformTheta(theta, u_lenses[i]);
+        if (u_lenses[i].model == IMPORT &&  // prevent sampling outside alpha texture
+            (theta0.x > u_angularRadius || theta0.x < -u_angularRadius
+            || theta0.y > u_angularRadius || theta0.y < -u_angularRadius))
+            return vec2(0.0, 0.0);
         vec2 alpha = calculateLensAlpha(theta0, i);
         alpha = vec2(alpha.x*cos(u_lenses[i].angle) - alpha.y*sin(u_lenses[i].angle),
                      alpha.x*sin(u_lenses[i].angle) + alpha.y*cos(u_lenses[i].angle));
