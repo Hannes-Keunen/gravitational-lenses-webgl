@@ -10,6 +10,8 @@ const float DIST_PC         = 3.0856775714409184e16;
 const float DIST_KPC        = 1000.0 * DIST_PC;
 const float DIST_MPC        = 1000.0 * DIST_KPC;
 
+const float NaN = 0.0/0.0;
+
 struct lens {
     float strength;
     vec2 position;
@@ -93,6 +95,7 @@ vec3 calculateLensAlphaDerivatives(vec2 theta, int index) {
         float axy = scale * x * y / denom;
         return vec3(axx, ayy, axy);
     } else if (u_lenses[index].model == NSIS) {
+        // NOTE: this is an approximation using NSIE with f = 0.99
         float scale = u_lenses[index].param1;   // (4*PI*Sv^2) / c^2
         float r = u_lenses[index].param2;
         float f = 0.99;
@@ -170,10 +173,13 @@ vec3 calculateAlphaDerivatives(vec2 theta, vec2 offset) {
 		float csa = ca*sa;
 
         vec2 theta0 = transformTheta(theta, u_lenses[i]);
-        if (u_lenses[i].model == IMPORT &&  // prevent sampling outside alpha texture
+        // Prevent sampling outside alpha texture:
+        // Return NaN if outside texture, so when adding up alphas, the result
+        // will always be NaN as well.
+        if (u_lenses[i].model == IMPORT &&
             (theta0.x > u_angularRadius || theta0.x < -u_angularRadius
             || theta0.y > u_angularRadius || theta0.y < -u_angularRadius))
-            return vec3(0.0, 0.0, 0.0);
+            return vec3(NaN, NaN, NaN);
         vec3 derivatives = calculateLensAlphaDerivatives(theta0 + offset * u_angularRadius, i);
 
 		float axx0 = derivatives.x * u_lenses[i].strength;
@@ -219,14 +225,13 @@ vec2 calculateLensAlpha(vec2 theta, int index) {
         float width = u_lenses[index].param2;
 
         vec2 scaledTheta = theta * ANGLE_ARCSEC;
-        float factor = dot(scaledTheta, scaledTheta) + pow(width*ANGLE_ARCSEC, 2.0);
+        float factor = dot(scaledTheta, scaledTheta) + pow(width, 2.0);
         return theta * scale / factor;
     } else if (u_lenses[index].model == SIS) {
         float scale = u_lenses[index].param1;   // (4*PI*Sv^2) / c^2
         vec2 e = normalize(theta);
         return scale * e / ANGLE_ARCSEC;
     } else if (u_lenses[index].model == NSIS) {
-        // NOTE: this is an approximation using NSIE with f = 0.99
         float scale = u_lenses[index].param1;   // (4*PI*Sv^2) / c^2
         float r = u_lenses[index].param2;
 
@@ -238,12 +243,13 @@ vec2 calculateLensAlpha(vec2 theta, int index) {
         float r2 = r * r;
 
         float denom = x2 + y2;
-        float factor = scale * (sqrt(x2 + y2 + r2) - r) / denom;
-        return vec2(factor * x, factor * y) / ANGLE_ARCSEC;
+        float factor = scale * (sqrt(x2 + y2 + r2) - r);
+        return vec2(factor * x / denom, factor * y / denom) / ANGLE_ARCSEC;
     } else if (u_lenses[index].model == SIE) {
         float scale = u_lenses[index].param1;   // (4*PI*Sv^2) / c^2
         float ff = u_lenses[index].param2;      // sqrt(1 - f^2)
         float f = u_lenses[index].param3;
+
         float factor = scale * sqrt(f) / ff;
         float x = factor * asinh((ff/f)*theta.x/length(theta));
         float y = factor * asin(ff*theta.y/length(theta));
@@ -275,10 +281,13 @@ vec2 calculateAlpha(vec2 theta) {
     vec2 sum = vec2(0.0, 0.0);
     for (int i = 0; i < int(u_num_lenses); i++) {
         vec2 theta0 = transformTheta(theta, u_lenses[i]);
-        if (u_lenses[i].model == IMPORT &&  // prevent sampling outside alpha texture
+        // Prevent sampling outside alpha texture:
+        // Return NaN if outside texture, so when adding up alphas, the result
+        // will always be NaN as well.
+        if (u_lenses[i].model == IMPORT &&
             (theta0.x > u_angularRadius || theta0.x < -u_angularRadius
             || theta0.y > u_angularRadius || theta0.y < -u_angularRadius))
-            return vec2(0.0, 0.0);
+            return vec2(NaN, NaN);
         vec2 alpha = calculateLensAlpha(theta0, i);
         alpha = vec2(alpha.x*cos(u_lenses[i].angle) - alpha.y*sin(u_lenses[i].angle),
                      alpha.x*sin(u_lenses[i].angle) + alpha.y*cos(u_lenses[i].angle));

@@ -10,6 +10,8 @@ const float DIST_PC         = 3.0856775714409184e16;
 const float DIST_KPC        = 1000.0 * DIST_PC;
 const float DIST_MPC        = 1000.0 * DIST_KPC;
 
+const float NaN = 0.0/0.0;
+
 struct lens {
     float strength;
     vec2 position;
@@ -184,10 +186,13 @@ vec3 calculateAlphaDerivatives(vec2 theta, vec2 offset) {
 		float csa = ca*sa;
 
         vec2 theta0 = transformTheta(theta, u_lenses[i]);
-        if (u_lenses[i].model == IMPORT &&  // prevent sampling outside alpha texture
+        // Prevent sampling outside alpha texture:
+        // Return NaN if outside texture, so when adding up alphas, the result
+        // will always be NaN as well.
+        if (u_lenses[i].model == IMPORT &&
             (theta0.x > u_angularRadius || theta0.x < -u_angularRadius
             || theta0.y > u_angularRadius || theta0.y < -u_angularRadius))
-            return vec3(0.0, 0.0, 0.0);
+            return vec3(NaN, NaN, NaN);
         vec3 derivatives = calculateLensAlphaDerivatives(theta0 + offset * u_angularRadius, i);
 
 		float axx0 = derivatives.x * u_lenses[i].strength;
@@ -306,10 +311,13 @@ vec2 calculateAlpha(vec2 theta) {
     vec2 sum = vec2(0.0, 0.0);
     for (int i = 0; i < int(u_num_lenses); i++) {
         vec2 theta0 = transformTheta(theta, u_lenses[i]);
-        if (u_lenses[i].model == IMPORT &&  // prevent sampling outside alpha texture
+        // Prevent sampling outside alpha texture:
+        // Return NaN if outside texture, so when adding up alphas, the result
+        // will always be NaN as well.
+        if (u_lenses[i].model == IMPORT &&
             (theta0.x > u_angularRadius || theta0.x < -u_angularRadius
             || theta0.y > u_angularRadius || theta0.y < -u_angularRadius))
-            return vec2(0.0, 0.0);
+            return vec2(NaN, NaN);
         vec2 alpha = calculateLensAlpha(theta0, i);
         alpha = vec2(alpha.x*cos(u_lenses[i].angle) - alpha.y*sin(u_lenses[i].angle),
                      alpha.x*sin(u_lenses[i].angle) + alpha.y*cos(u_lenses[i].angle));
@@ -320,7 +328,10 @@ vec2 calculateAlpha(vec2 theta) {
 }
 
 vec2 calculateBeta(vec2 theta, vec2 alpha, int index) {
-    return theta - (u_source_planes[index].D_ds / u_source_planes[index].D_s) * alpha;
+    if (isnan(alpha.x + alpha.y))
+        return theta;
+    else
+        return theta - (u_source_planes[index].D_ds / u_source_planes[index].D_s) * alpha;
 }
 
 vec4 traceTheta(vec2 theta) {
