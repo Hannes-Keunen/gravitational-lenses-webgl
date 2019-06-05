@@ -298,7 +298,10 @@ vec2 calculateAlpha(vec2 theta) {
 }
 
 vec2 calculateBeta(vec2 theta, vec2 alpha, int index) {
-    return theta - (u_source_planes[index].D_ds / u_source_planes[index].D_s) * alpha;
+    if (isnan(alpha.x + alpha.y))
+        return theta;
+    else
+        return theta - (u_source_planes[index].D_ds / u_source_planes[index].D_s) * alpha;
 }
 
 ivec2 angleToAbsolutePosition(vec2 angle) {
